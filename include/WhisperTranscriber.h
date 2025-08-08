@@ -31,7 +31,7 @@ public:
         bool translate = false;         ///< Translate to English if source is not English
         float silenceThreshold = 0.01f; ///< Silence detection threshold
         int maxSegmentLength = 30;      ///< Maximum segment length in seconds
-        bool enableVAD = true;          ///< Enable Voice Activity Detection
+        bool enableVAD = true;          ///< Enable Voice Activity
         bool suppressNonSpeech = true;  ///< Suppress non-speech tokens
     };
 

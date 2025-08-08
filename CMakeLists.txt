@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find required packages
 find_package(PkgConfig REQUIRED)
+pkg_check_modules(SQLITE3 REQUIRED sqlite3)
 
 # Option to build with different audio libraries
 option(USE_RTAUDIO "Use RtAudio for audio I/O" OFF)

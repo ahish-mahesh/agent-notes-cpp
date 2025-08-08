@@ -23,6 +23,7 @@
 
 #include "AudioCapture.h"
 #include "WhisperTranscriber.h"
+#include "DBHelper.h"
 
 #define USE_RTAUDIO 1
 
@@ -223,6 +224,12 @@ int main(int argc, char *argv[])
 
     try
     {
+        // Initialize the SQLite database
+
+        std::cout << "📦 Initializing SQLite database..." << std::endl;
+        DBHelper dbHelper("transcriptions.db");
+        std::cout << "✅ Database initialized successfully" << std::endl;
+
         // Initialize Whisper transcriber
         std::cout << "🤖 Loading Whisper model: " << config.modelPath << std::endl;
 
@@ -307,6 +314,18 @@ int main(int argc, char *argv[])
 
         capture.stop();
         transcriber.stopRealTimeProcessing();
+
+        // Stop audio capture and transcription and save the final text to the DB
+        std::cout << "\n📝 Saving final transcription to database..." << std::endl;
+
+        if (!dbHelper.saveTranscription(consolidatedText))
+        {
+            std::cerr << "❌ Failed to save transcription to database" << std::endl;
+        }
+        else
+        {
+            std::cout << "✅ Transcription saved to database successfully" << std::endl;
+        }
 
         std::cout << "✅ Shutdown complete" << std::endl;
     }

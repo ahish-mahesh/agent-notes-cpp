@@ -70,8 +70,8 @@ std::vector<WhisperTranscriber::Result> WhisperTranscriber::transcribe(const std
     params.n_threads = config_.threads;
     params.translate = config_.translate;
     params.language = config_.language == "auto" ? nullptr : config_.language.c_str();
-    params.print_realtime = false;
-    params.print_progress = false;
+    params.print_realtime = true;
+    params.print_progress = true;
     params.print_timestamps = false;
     params.print_special = false;
     params.suppress_blank = config_.suppressNonSpeech;
