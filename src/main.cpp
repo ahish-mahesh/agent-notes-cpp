@@ -20,6 +20,8 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+// include ifstream
+#include <fstream>
 
 #include "AudioCapture.h"
 #include "WhisperTranscriber.h"
@@ -189,7 +191,7 @@ namespace
     }
 }
 
-int main(int argc, char *argv[])
+int fullFlow(int argc, char *argv[])
 {
     // Parse command line arguments
     auto config = parseArguments(argc, argv);
@@ -382,4 +384,70 @@ int main(int argc, char *argv[])
     }
 
     return 0;
+}
+
+void testLLMSummary()
+{
+    // Test case for LLM summary generation
+    LLMClient::Config llmConfig;
+    llmConfig.modelPath = "models/llama-3.1-8b-instruct-q4_k_m.gguf";
+    llmConfig.threads = 4;
+    llmConfig.contextSize = 4096;
+    llmConfig.maxTokens = 512;
+    llmConfig.temperature = 0.7f;
+
+    LLMClient llmClient(llmConfig);
+
+    // Get the transcription text from SampleText.txt
+    std::ifstream inputFile("/Users/ahishmahesh/Personal/Programming/cpp/agent-notes-backend/SampleText.txt");
+    std::string transcriptionText;
+
+    if (inputFile)
+    {
+        std::stringstream buffer;
+        buffer << inputFile.rdbuf();
+        transcriptionText = buffer.str();
+    }
+    else
+    {
+        std::cerr << "❌ Failed to open SampleText.txt" << std::endl;
+        return;
+    }
+
+    if (llmClient.initialize())
+    {
+
+        // Print the transcription text
+        std::cout << "📝 Transcription Text:" << std::endl;
+        std::cout << "══════════════════════" << std::endl;
+        std::cout << transcriptionText << std::endl;
+        std::cout << "══════════════════════" << std::endl;
+
+        std::cout << "🧠 Generating summary..." << std::endl;
+
+        auto summaryResponse = llmClient.summarizeTranscript(transcriptionText);
+
+        if (summaryResponse.success)
+        {
+            std::cout << "\n📝 SUMMARY:" << std::endl;
+            std::cout << "═══════════" << std::endl;
+            std::cout << summaryResponse.text << std::endl;
+            std::cout << "\n⚡ Generated " << summaryResponse.tokensGenerated
+                      << " tokens in " << summaryResponse.inferenceTimeMs << "ms" << std::endl;
+        }
+        else
+        {
+            std::cerr << "❌ Failed to generate summary: " << summaryResponse.error << std::endl;
+        }
+    }
+    else
+    {
+        std::cerr << "❌ Failed to initialize LLM client" << std::endl;
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    // fullFlow(argc, argv);
+    testLLMSummary();
 }

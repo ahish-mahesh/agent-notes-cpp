@@ -1,0 +1,38 @@
+In the episode “Tools to Enhance Working Memory & Attention,” I explain a particular type of memory called working memory — where you keep a limited amount of information “in mind” so you can apply it toward a specific goal. Examples of working memory include remembering a phone number, name or address for only as long as you need to, then forgetting it, which essentially reopens your working memory to flexibly use other information. Working memory requires attention and is critically dependent on the neuromodulator dopamine. Your working memory capacity is important to your ability to task-switch when necessary to move throughout your day in a productive, focused way.
+
+Test Your Working Memory
+Two brief tests will inform you about your baseline working memory. These are similar to the working memory tests that researchers use in a laboratory setting.
+
+TEST ONE: For the first test, use this link or access an audio format, whichever you prefer.
+
+How many numbers (or letters) you can remember determines if you are in a low working memory, moderate working memory or high working memory group.
+TEST TWO: For this test, listen to 6 different sentences.
+
+At the end, I will ask you to remember a specific word in each sentence.
+Those who recall 0-2 words correctly fall into the low working memory group.
+Those who recall 3-6 words correctly fall into the high working memory group.
+(3-4 words is average.)
+Your results (low vs. high working memory) are a proxy for low or high baseline dopamine. Neuroimaging studies support this.
+
+Dopamine & Working Memory
+Using a similar test as “TEST ONE,” D’Esposito and colleagues found people who have a high working memory span (i.e., those who can remember longer strings of letters/numbers) have more of the neuromodulator dopamine available in the prefrontal cortex (PFC), and those with shorter working memory spans had lower amounts of dopamine.
+
+Further, when Goldman et al. introduced small amounts of dopamine directly into the PFC, working memory improved. D’Esposito and colleagues have shown that drugs that increase dopamine in humans, like bromocriptine, improve working memory.
+
+“TEST TWO” is a proxy for working memory capacity and, by extension, your baseline dopamine levels. Again, this test is similar to laboratory assessments but isn’t a diagnostic tool. Don’t be alarmed if you are in the low working memory group; in fact, there are many tools covered below that will improve your working memory abilities.
+
+Behavioral Tools to Improve Working Memory
+After determining your baseline working memory using the tests above, behavioral protocols are excellent first-line tools to improve working memory, performance and focus.
+
+Non-Sleep Deep Rest (NSDR)
+NSDR (or yoga nidra) is a practice of deliberate muscle relaxation that allows the brain to enter a shallow, sleep-like state. Both practices involve listening to a script that includes breathwork and focused attention on the body while you are lying down. You can find zero-cost NSDR scripts here.
+
+One study showed that yoga nidra increased dopamine levels in key brain regions by up to 60%. Other studies corroborate this finding with cognitive performance tasks, showing both NSDR and yoga nidra improve performance. Consider incorporating this practice 2-3x per week in 10-to-20-minute sessions.
+
+Deliberate Cold Exposure
+Exposure to cold water (shower or cold tub, for 1-3 minutes) greatly increases dopamine and other catecholamines (norepinephrine, epinephrine) for many hours afterwards. While deliberate cold exposure is uncomfortable in the moment, afterwards you will feel alert yet calm and likely will have improved focus and attention. To increase your attention for a study/work session, try incorporating a deliberate cold exposure of 1-3 minutes in duration 30-60 minutes prior to a work bout requiring working memory.
+
+Using either a cold shower or cold plunge, try staying in water up to your neck for 60 seconds to 3 minutes. The ideal water temperature is highly individual, a temperature you can safely stay in for 60-180 seconds but is uncomfortable enough that it takes some mental effort to get in and makes you want to get out. If it quickens your breathing and takes some mental effort to submerge to your neck with hands under as well, yet doesn’t “burn,” it’s likely the temperature is in a good range. For most people 40-50° F is a good temperature, but some may need it warmer.
+
+Binaural Beats
+Several studies show increases in working memory performance when listeners use 13-30 hertz (Hz) binaural beats while doing mental tasks (Engelbregt et al.; Beauchene et al.) — it is currently unknown if these improvements are due to increased dopamine or another route. There are many YouTube videos or apps for binaural beats. To improve working memory during cognitive tasks, listen to binaural beats before or during studying/working. I should mention the data on binaural beats is mixed, with some studies showing impressive, other studies showing lesser, and still other studies showing no improvement in human subjects. Note that studies which increased dopamine pharmacologically and looked for effects on working memory found a similar range of effects depending on whether subjects had low, medium or high dopamine levels (as assessed by brain imaging and/or tasks like the ones above). Those with initially lower dopamine apparently benefit more from increasing it than those with already high levels of dopamine at the outset, which makes logical sense.

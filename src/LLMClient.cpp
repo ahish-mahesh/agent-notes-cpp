@@ -18,7 +18,7 @@ LLMClient::~LLMClient()
 {
     if (context_)
     {
-        llama_bridge_free(reinterpret_cast<llama_bridge_context*>(context_));
+        llama_bridge_free(reinterpret_cast<llama_bridge_context *>(context_));
         context_ = nullptr;
     }
     model_ = nullptr; // Not used with bridge API
@@ -47,14 +47,14 @@ bool LLMClient::initialize()
     params.top_p = config_.topP;
     params.verbose = config_.verbose;
 
-    llama_bridge_context* bridge_ctx = llama_bridge_init(params);
+    llama_bridge_context *bridge_ctx = llama_bridge_init(params);
     if (!bridge_ctx)
     {
         std::cerr << "❌ Failed to initialize LLM bridge" << std::endl;
         return false;
     }
 
-    context_ = reinterpret_cast<llama_context*>(bridge_ctx);
+    context_ = reinterpret_cast<llama_context *>(bridge_ctx);
     model_ = nullptr; // Not used with bridge API
     initialized_ = true;
     std::cout << "✅ LLM client initialized with model: " << config_.modelPath << std::endl;
@@ -78,7 +78,7 @@ LLMClient::Response LLMClient::summarizeTranscript(const std::string &transcript
         transcript + "\n\n"
                      "Summary:";
 
-    return generate(prompt, 512);
+    return generate(prompt, 2048);
 }
 
 LLMClient::Response LLMClient::chatWithContext(const std::string &question, const std::string &context)
@@ -116,12 +116,12 @@ LLMClient::Response LLMClient::generate(const std::string &prompt, int maxTokens
     }
 
     // Use the bridge API for generation
-    llama_bridge_context* bridge_ctx = reinterpret_cast<llama_bridge_context*>(context_);
+    llama_bridge_context *bridge_ctx = reinterpret_cast<llama_bridge_context *>(context_);
     llama_bridge_result bridge_result = llama_bridge_generate(bridge_ctx, prompt.c_str(), maxTokens);
 
     Response result;
     result.success = bridge_result.success;
-    
+
     if (bridge_result.success)
     {
         result.text = bridge_result.text ? std::string(bridge_result.text) : "";
@@ -153,9 +153,9 @@ std::vector<llama_token> LLMClient::tokenize(const std::string &text)
         return {};
     }
 
-    llama_bridge_context* bridge_ctx = reinterpret_cast<llama_bridge_context*>(context_);
+    llama_bridge_context *bridge_ctx = reinterpret_cast<llama_bridge_context *>(context_);
     llama_bridge_tokens bridge_tokens = llama_bridge_tokenize(bridge_ctx, text.c_str());
-    
+
     std::vector<llama_token> tokens;
     if (bridge_tokens.tokens && bridge_tokens.count > 0)
     {
@@ -165,7 +165,7 @@ std::vector<llama_token> LLMClient::tokenize(const std::string &text)
             tokens[i] = bridge_tokens.tokens[i];
         }
     }
-    
+
     llama_bridge_free_tokens(&bridge_tokens);
     return tokens;
 }
@@ -177,18 +177,18 @@ std::string LLMClient::detokenize(const std::vector<llama_token> &tokens)
         return "";
     }
 
-    llama_bridge_context* bridge_ctx = reinterpret_cast<llama_bridge_context*>(context_);
+    llama_bridge_context *bridge_ctx = reinterpret_cast<llama_bridge_context *>(context_);
     llama_bridge_tokens bridge_tokens;
     bridge_tokens.count = tokens.size();
-    bridge_tokens.tokens = const_cast<int*>(tokens.data());
-    
-    char* result_str = llama_bridge_detokenize(bridge_ctx, &bridge_tokens);
+    bridge_tokens.tokens = const_cast<int *>(tokens.data());
+
+    char *result_str = llama_bridge_detokenize(bridge_ctx, &bridge_tokens);
     std::string result = result_str ? std::string(result_str) : "";
-    
+
     if (result_str)
     {
         free(result_str);
     }
-    
+
     return result;
 }

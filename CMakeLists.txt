@@ -5,6 +5,12 @@ project(AudioTranscriber VERSION 1.0.0)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Ensure the build type is set to Debug for debugging purposes
+set(CMAKE_BUILD_TYPE Debug)
+
+# Add debug flags to generate debug symbols
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+
 # Find required packages
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SQLITE3 REQUIRED sqlite3)
