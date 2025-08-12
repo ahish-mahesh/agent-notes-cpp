@@ -30,7 +30,7 @@ public:
     {
         unsigned int sampleRate = 16000; ///< Target sample rate for Whisper
         unsigned int channels = 1;       ///< Mono audio
-        unsigned int bufferSize = 256;   ///< Audio buffer size in frames
+        unsigned int bufferSize = 128;   ///< Audio buffer size in frames
         unsigned int deviceId = 0;       ///< Audio device ID (0 = default)
 
         /**

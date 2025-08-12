@@ -24,6 +24,7 @@
 #include "AudioCapture.h"
 #include "WhisperTranscriber.h"
 #include "DBHelper.h"
+#include "LLMClient.h"
 
 #define USE_RTAUDIO 1
 
@@ -225,7 +226,6 @@ int main(int argc, char *argv[])
     try
     {
         // Initialize the SQLite database
-
         std::cout << "📦 Initializing SQLite database..." << std::endl;
         DBHelper dbHelper("transcriptions.db");
         std::cout << "✅ Database initialized successfully" << std::endl;
@@ -318,13 +318,54 @@ int main(int argc, char *argv[])
         // Stop audio capture and transcription and save the final text to the DB
         std::cout << "\n📝 Saving final transcription to database..." << std::endl;
 
-        if (!dbHelper.saveTranscription(consolidatedText))
+        // clone the consolidated text
+        const std::string finalTranscription = consolidatedText;
+
+        if (!dbHelper.SaveTranscriptionResult(finalTranscription))
         {
             std::cerr << "❌ Failed to save transcription to database" << std::endl;
         }
         else
         {
             std::cout << "✅ Transcription saved to database successfully" << std::endl;
+        }
+
+        // Initialize LLM client
+        std::cout << "🤖 Initializing LLM for summarization..." << std::endl;
+
+        LLMClient::Config llmConfig;
+        llmConfig.modelPath = "models/llama-3.1-8b-instruct-q4_k_m.gguf";
+        llmConfig.threads = 4; // Adjust based on your M1's capabilities
+        llmConfig.contextSize = 4096;
+        llmConfig.maxTokens = 512;
+        llmConfig.temperature = 0.7f;
+
+        LLMClient llmClient(llmConfig);
+
+        if (llmClient.initialize())
+        {
+            std::cout << "🧠 Generating summary..." << std::endl;
+
+            auto summaryResponse = llmClient.summarizeTranscript(finalTranscription);
+
+            if (summaryResponse.success)
+            {
+                std::cout << "\n📝 SUMMARY:" << std::endl;
+                std::cout << "═══════════" << std::endl;
+                std::cout << summaryResponse.text << std::endl;
+                std::cout << "\n⚡ Generated " << summaryResponse.tokensGenerated
+                          << " tokens in " << summaryResponse.inferenceTimeMs << "ms" << std::endl;
+
+                // TODO: Save summary to database
+            }
+            else
+            {
+                std::cerr << "❌ Failed to generate summary: " << summaryResponse.error << std::endl;
+            }
+        }
+        else
+        {
+            std::cerr << "❌ Failed to initialize LLM client" << std::endl;
         }
 
         std::cout << "✅ Shutdown complete" << std::endl;

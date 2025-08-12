@@ -14,11 +14,7 @@ DBHelper::DBHelper(const std::string &dbPath)
         throw std::runtime_error("Failed to open database: " + dbPath);
     }
 
-    // Initialize the database if it doesn't exist
-    if (!createDB(dbPath))
-    {
-        createDB(dbPath);
-    }
+    createDB(dbPath);
 }
 
 DBHelper::~DBHelper()
@@ -44,14 +40,14 @@ bool DBHelper::execute(const std::string &query)
     return true;
 }
 
-DBHelper::SaveTranscriptionResult(const std::string &result)
+bool DBHelper::SaveTranscriptionResult(const std::string &result)
 {
     if (result.empty())
     {
         return false; // Nothing to save
     }
 
-    std::string query = "INSERT INTO transcriptions (result) VALUES ('" + sqlite3_mprintf("%q", result.c_str()) + "');";
+    std::string query = "INSERT INTO transcriptions (result) VALUES ('" + (std::string)sqlite3_mprintf("%q", result.c_str()) + "');";
 
     try
     {
@@ -63,7 +59,7 @@ DBHelper::SaveTranscriptionResult(const std::string &result)
     }
 }
 
-DBHelper::createDB(const std::string &dbPath)
+bool DBHelper::createDB(const std::string &dbPath)
 {
     if (db_)
     {
@@ -89,9 +85,4 @@ DBHelper::createDB(const std::string &dbPath)
     {
         throw std::runtime_error("Failed to create transcriptions table: " + std::string(e.what()));
     }
-}
-
-sqlite3 *DBHelper::getDBHandle() const
-{
-    return db_;
 }

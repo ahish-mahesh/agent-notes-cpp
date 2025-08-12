@@ -8,8 +8,9 @@
 #include <condition_variable>
 #include <thread>
 #include <atomic>
+#include <functional>
 
-#include "whisper.h"
+#include "WhisperBridge.h"
 
 /**
  * @brief Whisper-based speech transcription class
@@ -109,7 +110,7 @@ public:
 
 private:
     Config config_;
-    whisper_context *whisperContext_;
+    whisper_bridge_context *whisperContext_;
     bool initialized_;
 
     // Real-time processing
@@ -146,10 +147,10 @@ private:
 
     /**
      * @brief Convert whisper results to our Result structure
-     * @param ctx Whisper context after transcription
+     * @param result Whisper bridge result
      * @return Vector of transcription results
      */
-    std::vector<Result> extractResults(whisper_context *ctx) const;
+    std::vector<Result> extractResults(const whisper_bridge_result &result) const;
 
     /**
      * @brief Print system information and model details

@@ -118,7 +118,7 @@ int AudioCapture::rtAudioCallback(void *outputBuffer, void *inputBuffer,
 {
 
     // Suppress unused parameter warnings
-    (void)outputBuffer;
+    (void)outputBuffer; // suppress unused parameter warning
 
     auto *capture = static_cast<AudioCapture *>(userData);
 

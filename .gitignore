@@ -35,3 +35,5 @@ _deps
 # Temporary files
 *.tmp
 *.log
+transcriptions.db
+models/llama-3.1-8b-instruct-q4_k_m.gguf

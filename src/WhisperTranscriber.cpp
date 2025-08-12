@@ -19,7 +19,7 @@ WhisperTranscriber::~WhisperTranscriber()
 
     if (whisperContext_)
     {
-        whisper_free(whisperContext_);
+        whisper_bridge_free(whisperContext_);
         whisperContext_ = nullptr;
     }
 }
@@ -33,12 +33,17 @@ bool WhisperTranscriber::initialize()
 
     std::cout << "Loading Whisper model: " << config_.modelPath << std::endl;
 
-    // Initialize whisper context parameters
-    whisper_context_params ctx_params = whisper_context_default_params();
-    ctx_params.use_gpu = false; // Use CPU for compatibility
+    // Initialize whisper bridge parameters
+    whisper_bridge_params params = {};
+    params.model_path = config_.modelPath.c_str();
+    params.language = config_.language.c_str();
+    params.threads = config_.threads;
+    params.max_len_ms = config_.maxSegmentLength * 1000;
+    params.vad_threshold = config_.silenceThreshold;
+    params.use_gpu = false; // Use CPU for compatibility
 
-    // Load the model
-    whisperContext_ = whisper_init_from_file_with_params(config_.modelPath.c_str(), ctx_params);
+    // Initialize the bridge
+    whisperContext_ = whisper_bridge_init(params);
 
     if (!whisperContext_)
     {
@@ -63,30 +68,26 @@ std::vector<WhisperTranscriber::Result> WhisperTranscriber::transcribe(const std
         return {};
     }
 
-    // Prepare whisper parameters
-    whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+    // Use the bridge API for transcription
+    whisper_bridge_result result = whisper_bridge_transcribe_audio(
+        whisperContext_, 
+        audioData.data(), 
+        audioData.size(), 
+        16000  // sample rate
+    );
 
-    // Configure parameters
-    params.n_threads = config_.threads;
-    params.translate = config_.translate;
-    params.language = config_.language == "auto" ? nullptr : config_.language.c_str();
-    params.print_realtime = true;
-    params.print_progress = true;
-    params.print_timestamps = false;
-    params.print_special = false;
-    params.suppress_blank = config_.suppressNonSpeech;
-
-    // Run the transcription
-    int result = whisper_full(whisperContext_, params, audioData.data(), audioData.size());
-
-    if (result != 0)
+    if (!result.success)
     {
-        std::cerr << "Failed to process audio with Whisper" << std::endl;
+        std::cerr << "Failed to process audio with Whisper: " 
+                  << (result.error_msg ? result.error_msg : "Unknown error") << std::endl;
+        whisper_bridge_free_result(&result);
         return {};
     }
 
     // Extract results
-    return extractResults(whisperContext_);
+    auto results = extractResults(result);
+    whisper_bridge_free_result(&result);
+    return results;
 }
 
 void WhisperTranscriber::addAudioData(const std::vector<float> &audioData, double timestamp)
@@ -297,42 +298,33 @@ bool WhisperTranscriber::detectSpeech(const std::vector<float> &audioData) const
     return energy > (config_.silenceThreshold * config_.silenceThreshold);
 }
 
-std::vector<WhisperTranscriber::Result> WhisperTranscriber::extractResults(whisper_context *ctx) const
+std::vector<WhisperTranscriber::Result> WhisperTranscriber::extractResults(const whisper_bridge_result &bridge_result) const
 {
-    std::vector<Result> results; // FIXED: was std::vector<r>
+    std::vector<Result> results;
 
-    const int segmentCount = whisper_full_n_segments(ctx);
-
-    for (int i = 0; i < segmentCount; i++)
+    if (bridge_result.text && strlen(bridge_result.text) > 0)
     {
-        const char *text = whisper_full_get_segment_text(ctx, i);
-        const int64_t startTime = whisper_full_get_segment_t0(ctx, i);
-        const int64_t endTime = whisper_full_get_segment_t1(ctx, i);
+        Result result;
+        result.text = bridge_result.text;
+        result.startTime = bridge_result.start_time_ms / 1000.0; // Convert from milliseconds to seconds
+        result.endTime = bridge_result.end_time_ms / 1000.0;
+        result.confidence = bridge_result.confidence;
+        result.language = config_.language;
 
-        if (text && strlen(text) > 0)
+        // Trim whitespace
+        result.text.erase(result.text.begin(),
+                          std::find_if(result.text.begin(), result.text.end(),
+                                       [](unsigned char ch)
+                                       { return !std::isspace(ch); }));
+        result.text.erase(std::find_if(result.text.rbegin(), result.text.rend(),
+                                       [](unsigned char ch)
+                                       { return !std::isspace(ch); })
+                              .base(),
+                          result.text.end());
+
+        if (!result.text.empty())
         {
-            Result result;
-            result.text = text;
-            result.startTime = startTime / 100.0; // Convert from centiseconds to seconds
-            result.endTime = endTime / 100.0;
-            result.confidence = 0.0f; // Whisper doesn't provide confidence scores directly
-            result.language = config_.language;
-
-            // Trim whitespace
-            result.text.erase(result.text.begin(),
-                              std::find_if(result.text.begin(), result.text.end(),
-                                           [](unsigned char ch)
-                                           { return !std::isspace(ch); }));
-            result.text.erase(std::find_if(result.text.rbegin(), result.text.rend(),
-                                           [](unsigned char ch)
-                                           { return !std::isspace(ch); })
-                                  .base(),
-                              result.text.end());
-
-            if (!result.text.empty())
-            {
-                results.push_back(result);
-            }
+            results.push_back(result);
         }
     }
 

@@ -2,27 +2,61 @@ cmake_minimum_required(VERSION 3.16)
 project(AudioTranscriber VERSION 1.0.0)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find required packages
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SQLITE3 REQUIRED sqlite3)
 
+# Include ExternalProject module
+include(ExternalProject)
+
 # Option to build with different audio libraries
 option(USE_RTAUDIO "Use RtAudio for audio I/O" OFF)
 option(USE_PORTAUDIO "Use PortAudio for audio I/O" ON)
 
-# whisper.cpp configuration
-set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+# Create separate install directories for each external project
+set(WHISPER_INSTALL_DIR "${CMAKE_BINARY_DIR}/whisper-install")
+set(LLAMA_INSTALL_DIR "${CMAKE_BINARY_DIR}/llama-install")
 
-# Add whisper.cpp as subdirectory (git submodule)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/whisper.cpp/CMakeLists.txt")
-    add_subdirectory(third_party/whisper.cpp)
-else()
-    message(FATAL_ERROR "whisper.cpp not found. Please run: git submodule update --init --recursive")
-endif()
+# Build whisper.cpp as external project with dynamic libraries
+ExternalProject_Add(whisper_external
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/whisper.cpp
+    CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=${WHISPER_INSTALL_DIR}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DWHISPER_BUILD_TESTS=OFF
+        -DWHISPER_BUILD_EXAMPLES=OFF
+        -DBUILD_SHARED_LIBS=ON
+        -DCMAKE_CXX_STANDARD=17
+    INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
+    BUILD_BYPRODUCTS
+        ${WHISPER_INSTALL_DIR}/lib/libwhisper.dylib
+        ${WHISPER_INSTALL_DIR}/lib/libggml.dylib
+        ${WHISPER_INSTALL_DIR}/lib/libwhisper.so
+        ${WHISPER_INSTALL_DIR}/lib/libggml.so
+)
+
+# Build llama.cpp as external project with dynamic libraries
+ExternalProject_Add(llama_external
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/llama.cpp
+    CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=${LLAMA_INSTALL_DIR}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DLLAMA_BUILD_TESTS=OFF
+        -DLLAMA_BUILD_EXAMPLES=OFF
+        -DLLAMA_BUILD_SERVER=OFF
+        -DBUILD_SHARED_LIBS=ON
+        -DCMAKE_CXX_STANDARD=17
+        -DCMAKE_CXX_STANDARD_REQUIRED=ON
+    INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
+    BUILD_BYPRODUCTS
+        ${LLAMA_INSTALL_DIR}/lib/libllama.dylib
+        ${LLAMA_INSTALL_DIR}/lib/libggml.dylib
+        ${LLAMA_INSTALL_DIR}/lib/libllama.so
+        ${LLAMA_INSTALL_DIR}/lib/libggml.so
+)
 
 # Audio library configuration
 if(USE_RTAUDIO)
@@ -45,28 +79,118 @@ else()
     message(FATAL_ERROR "Please enable either USE_RTAUDIO or USE_PORTAUDIO")
 endif()
 
-# Create executable
+# ============================================================================
+# WRAPPER LIBRARIES (Isolated header includes)
+# ============================================================================
+
+# Whisper Wrapper Library - Only this library includes whisper headers
+add_library(whisper_wrapper SHARED
+    src/WhisperBridge.cpp
+)
+
+add_dependencies(whisper_wrapper whisper_external)
+
+# PRIVATE includes - whisper headers are isolated to this library
+target_include_directories(whisper_wrapper PRIVATE
+    include
+    ${WHISPER_INSTALL_DIR}/include
+)
+
+# Platform-specific whisper linking
+if(APPLE)
+    target_link_libraries(whisper_wrapper PRIVATE
+        ${WHISPER_INSTALL_DIR}/lib/libwhisper.dylib
+        ${WHISPER_INSTALL_DIR}/lib/libggml.dylib
+    )
+else() # Linux
+    target_link_libraries(whisper_wrapper PRIVATE
+        ${WHISPER_INSTALL_DIR}/lib/libwhisper.so
+        ${WHISPER_INSTALL_DIR}/lib/libggml.so
+    )
+endif()
+
+# Set RPATH for whisper_wrapper
+set_target_properties(whisper_wrapper PROPERTIES
+    BUILD_RPATH "${WHISPER_INSTALL_DIR}/lib"
+    INSTALL_RPATH "${WHISPER_INSTALL_DIR}/lib"
+    MACOSX_RPATH TRUE
+)
+
+# Llama Wrapper Library - Only this library includes llama headers
+add_library(llama_wrapper SHARED
+    src/LlamaBridge.cpp
+)
+
+add_dependencies(llama_wrapper llama_external)
+
+# PRIVATE includes - llama headers are isolated to this library
+target_include_directories(llama_wrapper PRIVATE
+    include
+    ${LLAMA_INSTALL_DIR}/include
+)
+
+# Platform-specific llama linking
+if(APPLE)
+    target_link_libraries(llama_wrapper PRIVATE
+        ${LLAMA_INSTALL_DIR}/lib/libllama.dylib
+        ${LLAMA_INSTALL_DIR}/lib/libggml.dylib
+    )
+else() # Linux
+    target_link_libraries(llama_wrapper PRIVATE
+        ${LLAMA_INSTALL_DIR}/lib/libllama.so
+        ${LLAMA_INSTALL_DIR}/lib/libggml.so
+    )
+endif()
+
+# Set RPATH for llama_wrapper
+set_target_properties(llama_wrapper PROPERTIES
+    BUILD_RPATH "${LLAMA_INSTALL_DIR}/lib"
+    INSTALL_RPATH "${LLAMA_INSTALL_DIR}/lib"
+    MACOSX_RPATH TRUE
+)
+
+# ============================================================================
+# MAIN EXECUTABLE (No direct whisper/llama/ggml exposure)
+# ============================================================================
+
+# Create main executable
 add_executable(audio-transcriber
     src/main.cpp
     src/AudioCapture.cpp
     src/WhisperTranscriber.cpp
     src/AudioBuffer.cpp
+    src/DBHelper.cpp
+    src/LLMClient.cpp
 )
 
-# Include directories
+# Make executable depend on wrapper libraries
+add_dependencies(audio-transcriber whisper_wrapper llama_wrapper)
+
+# SAFE includes - only our own headers and system headers
 target_include_directories(audio-transcriber PRIVATE
     include
-    third_party/whisper.cpp
     third_party/rtaudio
+    ${SQLITE3_INCLUDE_DIRS}
 )
 
-# Link libraries
+# Link against wrapper libraries (NOT directly against whisper/llama)
 target_link_libraries(audio-transcriber PRIVATE
-    whisper
+    whisper_wrapper
+    llama_wrapper
     ${AUDIO_LIBRARY}
+    ${SQLITE3_LIBRARIES}
 )
 
-# Platform-specific configurations
+# Set RPATH so executable can find wrapper libraries at runtime
+set_target_properties(audio-transcriber PROPERTIES
+    BUILD_RPATH "${CMAKE_BINARY_DIR}"
+    INSTALL_RPATH "${CMAKE_BINARY_DIR}"
+    BUILD_RPATH_USE_ORIGIN TRUE
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    MACOSX_RPATH TRUE
+)
+
+# Add platform-specific system frameworks and libraries
 if(APPLE)
     target_link_libraries(audio-transcriber PRIVATE
         "-framework CoreAudio"
@@ -77,16 +201,10 @@ if(APPLE)
         "-framework Metal"
         "-framework MetalKit"
     )
-elseif(LINUX)
+else() # Linux
     target_link_libraries(audio-transcriber PRIVATE
         pthread
         alsa
-    )
-elseif(WIN32)
-    target_link_libraries(audio-transcriber PRIVATE
-        winmm
-        dsound
-        ole32
     )
 endif()
 
@@ -95,11 +213,18 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(audio-transcriber PRIVATE
         -Wall -Wextra -O2
     )
+    target_compile_options(whisper_wrapper PRIVATE
+        -Wall -Wextra -O2
+    )
+    target_compile_options(llama_wrapper PRIVATE
+        -Wall -Wextra -O2
+    )
 endif()
 
 # Install target
-install(TARGETS audio-transcriber
+install(TARGETS audio-transcriber whisper_wrapper llama_wrapper
     RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
 )
 
 # Print build configuration
@@ -107,3 +232,6 @@ message(STATUS "Build configuration:")
 message(STATUS "  Audio library: ${AUDIO_LIBRARY}")
 message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD}")
+message(STATUS "  Whisper wrapper: Isolated includes")
+message(STATUS "  Llama wrapper: Isolated includes")
+message(STATUS "  Main executable: No direct ggml exposure")
