@@ -20,7 +20,7 @@ option(USE_PORTAUDIO "Use PortAudio for audio I/O" ON)
 set(WHISPER_INSTALL_DIR "${CMAKE_BINARY_DIR}/whisper-install")
 set(LLAMA_INSTALL_DIR "${CMAKE_BINARY_DIR}/llama-install")
 
-# Build whisper.cpp as external project with dynamic libraries
+# Build whisper.cpp as external project with static libraries
 ExternalProject_Add(whisper_external
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/whisper.cpp
     CMAKE_ARGS
@@ -28,17 +28,19 @@ ExternalProject_Add(whisper_external
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DWHISPER_BUILD_TESTS=OFF
         -DWHISPER_BUILD_EXAMPLES=OFF
-        -DBUILD_SHARED_LIBS=ON
+        -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_CXX_STANDARD=17
     INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
     BUILD_BYPRODUCTS
-        ${WHISPER_INSTALL_DIR}/lib/libwhisper.dylib
-        ${WHISPER_INSTALL_DIR}/lib/libggml.dylib
-        ${WHISPER_INSTALL_DIR}/lib/libwhisper.so
-        ${WHISPER_INSTALL_DIR}/lib/libggml.so
+        ${WHISPER_INSTALL_DIR}/lib/libwhisper.a
+        ${WHISPER_INSTALL_DIR}/lib/libggml.a
+        ${WHISPER_INSTALL_DIR}/lib/libggml-base.a
+        ${WHISPER_INSTALL_DIR}/lib/libggml-cpu.a
+        ${WHISPER_INSTALL_DIR}/lib/libggml-metal.a
+        ${WHISPER_INSTALL_DIR}/lib/libggml-blas.a
 )
 
-# Build llama.cpp as external project with dynamic libraries
+# Build llama.cpp as external project with static libraries
 ExternalProject_Add(llama_external
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/llama.cpp
     CMAKE_ARGS
@@ -47,15 +49,17 @@ ExternalProject_Add(llama_external
         -DLLAMA_BUILD_TESTS=OFF
         -DLLAMA_BUILD_EXAMPLES=OFF
         -DLLAMA_BUILD_SERVER=OFF
-        -DBUILD_SHARED_LIBS=ON
+        -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_CXX_STANDARD=17
         -DCMAKE_CXX_STANDARD_REQUIRED=ON
     INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
     BUILD_BYPRODUCTS
-        ${LLAMA_INSTALL_DIR}/lib/libllama.dylib
-        ${LLAMA_INSTALL_DIR}/lib/libggml.dylib
-        ${LLAMA_INSTALL_DIR}/lib/libllama.so
-        ${LLAMA_INSTALL_DIR}/lib/libggml.so
+        ${LLAMA_INSTALL_DIR}/lib/libllama.a
+        ${LLAMA_INSTALL_DIR}/lib/libggml.a
+        ${LLAMA_INSTALL_DIR}/lib/libggml-base.a
+        ${LLAMA_INSTALL_DIR}/lib/libggml-cpu.a
+        ${LLAMA_INSTALL_DIR}/lib/libggml-metal.a
+        ${LLAMA_INSTALL_DIR}/lib/libggml-blas.a
 )
 
 # Audio library configuration
@@ -96,25 +100,29 @@ target_include_directories(whisper_wrapper PRIVATE
     ${WHISPER_INSTALL_DIR}/include
 )
 
-# Platform-specific whisper linking
+# Static whisper linking (cross-platform) with all GGML components
+target_link_libraries(whisper_wrapper PRIVATE
+    ${WHISPER_INSTALL_DIR}/lib/libwhisper.a
+    ${WHISPER_INSTALL_DIR}/lib/libggml.a
+    ${WHISPER_INSTALL_DIR}/lib/libggml-base.a
+    ${WHISPER_INSTALL_DIR}/lib/libggml-cpu.a
+    ${WHISPER_INSTALL_DIR}/lib/libggml-metal.a
+    ${WHISPER_INSTALL_DIR}/lib/libggml-blas.a
+)
+
+# Link system frameworks required by GGML on macOS
 if(APPLE)
     target_link_libraries(whisper_wrapper PRIVATE
-        ${WHISPER_INSTALL_DIR}/lib/libwhisper.dylib
-        ${WHISPER_INSTALL_DIR}/lib/libggml.dylib
-    )
-else() # Linux
-    target_link_libraries(whisper_wrapper PRIVATE
-        ${WHISPER_INSTALL_DIR}/lib/libwhisper.so
-        ${WHISPER_INSTALL_DIR}/lib/libggml.so
+        "-framework Metal"
+        "-framework MetalKit"
+        "-framework Accelerate"
+        "-framework Foundation"
+        "-framework CoreFoundation"
     )
 endif()
 
-# Set RPATH for whisper_wrapper
-set_target_properties(whisper_wrapper PROPERTIES
-    BUILD_RPATH "${WHISPER_INSTALL_DIR}/lib"
-    INSTALL_RPATH "${WHISPER_INSTALL_DIR}/lib"
-    MACOSX_RPATH TRUE
-)
+# No RPATH needed for static linking
+# Static libraries are embedded at link time
 
 # Llama Wrapper Library - Only this library includes llama headers
 add_library(llama_wrapper SHARED
@@ -129,25 +137,29 @@ target_include_directories(llama_wrapper PRIVATE
     ${LLAMA_INSTALL_DIR}/include
 )
 
-# Platform-specific llama linking
+# Static llama linking (cross-platform) with all GGML components
+target_link_libraries(llama_wrapper PRIVATE
+    ${LLAMA_INSTALL_DIR}/lib/libllama.a
+    ${LLAMA_INSTALL_DIR}/lib/libggml.a
+    ${LLAMA_INSTALL_DIR}/lib/libggml-base.a
+    ${LLAMA_INSTALL_DIR}/lib/libggml-cpu.a
+    ${LLAMA_INSTALL_DIR}/lib/libggml-metal.a
+    ${LLAMA_INSTALL_DIR}/lib/libggml-blas.a
+)
+
+# Link system frameworks required by GGML on macOS
 if(APPLE)
     target_link_libraries(llama_wrapper PRIVATE
-        ${LLAMA_INSTALL_DIR}/lib/libllama.dylib
-        ${LLAMA_INSTALL_DIR}/lib/libggml.dylib
-    )
-else() # Linux
-    target_link_libraries(llama_wrapper PRIVATE
-        ${LLAMA_INSTALL_DIR}/lib/libllama.so
-        ${LLAMA_INSTALL_DIR}/lib/libggml.so
+        "-framework Metal"
+        "-framework MetalKit"
+        "-framework Accelerate"
+        "-framework Foundation"
+        "-framework CoreFoundation"
     )
 endif()
 
-# Set RPATH for llama_wrapper
-set_target_properties(llama_wrapper PROPERTIES
-    BUILD_RPATH "${LLAMA_INSTALL_DIR}/lib"
-    INSTALL_RPATH "${LLAMA_INSTALL_DIR}/lib"
-    MACOSX_RPATH TRUE
-)
+# No RPATH needed for static linking
+# Static libraries are embedded at link time
 
 # ============================================================================
 # MAIN EXECUTABLE (No direct whisper/llama/ggml exposure)
