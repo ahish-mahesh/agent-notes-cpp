@@ -44,9 +44,9 @@ llama_bridge_context *llama_bridge_init(llama_bridge_params params)
 
     // Load model
     llama_model_params model_params = llama_model_default_params();
-    model_params.n_gpu_layers = 0; // Use CPU for compatibility
+    model_params.n_gpu_layers = 999; // Use CPU for compatibility
     model_params.use_mmap = true;
-    model_params.use_mlock = false;
+    model_params.use_mlock = true;
 
     bridge_ctx->model = llama_model_load_from_file(params.model_path, model_params);
     if (!bridge_ctx->model)
@@ -59,8 +59,11 @@ llama_bridge_context *llama_bridge_init(llama_bridge_params params)
     // Create context
     llama_context_params ctx_params = llama_context_default_params();
     ctx_params.n_ctx = params.context_size;
-    ctx_params.n_threads = params.threads;
-    ctx_params.n_threads_batch = params.threads;
+    // ctx_params.n_threads = params.threads;
+    // ctx_params.n_threads_batch = params.threads;
+    ctx_params.n_threads = std::min(params.threads, 8); // M1 optimization
+    ctx_params.n_threads_batch = ctx_params.n_threads;
+    ctx_params.flash_attn = true; // Enable flash attention if available
 
     bridge_ctx->ctx = llama_init_from_model(bridge_ctx->model, ctx_params);
     if (!bridge_ctx->ctx)
@@ -208,7 +211,7 @@ llama_bridge_result llama_bridge_generate(
         }
 
         // Print the string as and when it's generated
-        std::cout << token_str << " ";
+        // std::cout << token_str << " ";
 
         generated_text.append(token_str, n);
         tokens_generated++;
@@ -246,15 +249,18 @@ llama_bridge_result llama_bridge_chat(
     int max_tokens)
 {
 
-    // Construct a chat-formatted prompt
+    // Construct a chat-formatted prompt using Qwen2.5 format
     std::string full_prompt;
     if (system_prompt && strlen(system_prompt) > 0)
     {
-        full_prompt = std::string("System: ") + system_prompt + "\n\nUser: " + user_message + "\n\nAssistant: ";
+        full_prompt = std::string("<|im_start|>system\n") + system_prompt + 
+                     "<|im_end|>\n<|im_start|>user\n" + user_message + 
+                     "<|im_end|>\n<|im_start|>assistant\n";
     }
     else
     {
-        full_prompt = std::string("User: ") + user_message + "\n\nAssistant: ";
+        full_prompt = std::string("<|im_start|>user\n") + user_message + 
+                     "<|im_end|>\n<|im_start|>assistant\n";
     }
 
     return llama_bridge_generate(ctx, full_prompt.c_str(), max_tokens);

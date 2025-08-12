@@ -336,7 +336,7 @@ int fullFlow(int argc, char *argv[])
         std::cout << "🤖 Initializing LLM for summarization..." << std::endl;
 
         LLMClient::Config llmConfig;
-        llmConfig.modelPath = "models/llama-3.1-8b-instruct-q4_k_m.gguf";
+        llmConfig.modelPath = "models/qwen2.5-0.5b-instruct-q4_k_m.gguf";
         llmConfig.threads = 4; // Adjust based on your M1's capabilities
         llmConfig.contextSize = 4096;
         llmConfig.maxTokens = 512;
@@ -390,7 +390,7 @@ void testLLMSummary()
 {
     // Test case for LLM summary generation
     LLMClient::Config llmConfig;
-    llmConfig.modelPath = "models/llama-3.1-8b-instruct-q4_k_m.gguf";
+    llmConfig.modelPath = "models/qwen2.5-0.5b-instruct-q4_k_m.gguf";
     llmConfig.threads = 4;
     llmConfig.contextSize = 4096;
     llmConfig.maxTokens = 512;
