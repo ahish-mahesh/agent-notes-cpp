@@ -180,7 +180,6 @@ add_executable(audio-transcriber
     src/main.cpp
     src/AudioCapture.cpp
     src/WhisperTranscriber.cpp
-    src/TranscriptDeduplicator.cpp
     src/AudioBuffer.cpp
     src/DBHelper.cpp
     src/LLMClient.cpp
