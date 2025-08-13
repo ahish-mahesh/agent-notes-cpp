@@ -11,6 +11,7 @@
 #include <functional>
 
 #include "WhisperBridge.h"
+#include "TranscriptDeduplicator.h"
 
 /**
  * @brief Whisper-based speech transcription class
@@ -36,6 +37,12 @@ public:
         bool suppressNonSpeech = true;  ///< Suppress non-speech tokens
         int minSilenceDurationMs = 300; ///< Minimum silence duration for speech boundaries
         int speechPadMs = 100;          ///< Padding around speech segments
+        
+        // Deduplication settings
+        bool enableDeduplication = true;    ///< Enable transcript deduplication
+        size_t slidingWindowSize = 10;      ///< Number of words for overlap detection
+        double overlapThreshold = 0.7;     ///< Similarity threshold for overlaps (0.0-1.0)
+        double confidenceWeight = 0.3;     ///< Weight for confidence in conflict resolution
     };
 
     /**
@@ -134,6 +141,9 @@ private:
     // Previous transcription results for punctuation fixing
     std::vector<Result> recentResults_;
     static constexpr size_t MAX_RECENT_RESULTS = 3;      ///< Keep last 3 results for context
+    
+    // Transcript deduplication
+    std::unique_ptr<TranscriptDeduplicator> deduplicator_;
 
     /**
      * @brief Real-time processing thread function
@@ -166,6 +176,13 @@ private:
      * @return Punctuation-corrected results
      */
     std::vector<Result> fixPunctuation(const std::vector<Result> &newResults);
+
+    /**
+     * @brief Deduplicate and correct transcription results
+     * @param newResults New transcription results to process
+     * @return Deduplicated and corrected results
+     */
+    std::vector<Result> deduplicateAndCorrect(const std::vector<Result> &newResults);
 
     /**
      * @brief Print system information and model details

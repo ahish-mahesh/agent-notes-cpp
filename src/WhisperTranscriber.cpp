@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <thread>
+#include <memory>
 
 WhisperTranscriber::WhisperTranscriber(const Config &config)
     : config_(config), whisperContext_(nullptr), initialized_(false), shouldStop_(false), bufferStartTime_(0.0)
@@ -16,6 +17,16 @@ WhisperTranscriber::WhisperTranscriber(const Config &config)
     overlapBuffer_.reserve(overlapSamples);
 
     recentResults_.reserve(MAX_RECENT_RESULTS);
+
+    // Initialize deduplicator if enabled
+    if (config_.enableDeduplication)
+    {
+        TranscriptDeduplicator::Config dedupConfig;
+        dedupConfig.slidingWindowSize = config_.slidingWindowSize;
+        dedupConfig.overlapThreshold = config_.overlapThreshold;
+        dedupConfig.confidenceWeight = config_.confidenceWeight;
+        deduplicator_ = std::make_unique<TranscriptDeduplicator>(dedupConfig);
+    }
 }
 
 WhisperTranscriber::~WhisperTranscriber()
@@ -150,6 +161,12 @@ void WhisperTranscriber::stopRealTimeProcessing()
     audioBuffer_.clear();
     overlapBuffer_.clear();
     recentResults_.clear();
+
+    // Clear deduplicator context
+    if (deduplicator_)
+    {
+        deduplicator_->clearContext();
+    }
 
     std::cout << "Real-time processing stopped" << std::endl;
 }
@@ -294,8 +311,8 @@ bool WhisperTranscriber::processBuffer()
     // Transcribe the audio with overlap
     auto results = transcribe(audioToProcess);
 
-    // Fix punctuation based on recent results
-    auto correctedResults = fixPunctuation(results);
+    // Apply deduplication and punctuation correction
+    auto correctedResults = config_.enableDeduplication ? deduplicateAndCorrect(results) : fixPunctuation(results);
 
     // Send corrected results to callback
     for (const auto &result : correctedResults)
@@ -433,6 +450,54 @@ std::vector<WhisperTranscriber::Result> WhisperTranscriber::fixPunctuation(const
     }
 
     return correctedResults;
+}
+
+std::vector<WhisperTranscriber::Result> WhisperTranscriber::deduplicateAndCorrect(const std::vector<Result> &newResults)
+{
+    if (newResults.empty() || !deduplicator_)
+    {
+        return fixPunctuation(newResults); // Fallback to basic punctuation fixing
+    }
+
+    std::vector<Result> processedResults;
+
+    for (const auto &result : newResults)
+    {
+        // Convert to deduplicator format
+        TranscriptDeduplicator::Segment segment(
+            result.text,
+            result.startTime,
+            result.endTime,
+            result.confidence,
+            result.language);
+
+        // Process through deduplicator
+        auto dedupSegment = deduplicator_->processSegment(segment);
+
+        // Convert back to Result format if not empty
+        if (!dedupSegment.text.empty())
+        {
+            Result processedResult;
+            processedResult.text = dedupSegment.text;
+            processedResult.startTime = dedupSegment.startTime;
+            processedResult.endTime = dedupSegment.endTime;
+            processedResult.confidence = dedupSegment.confidence;
+            processedResult.language = dedupSegment.language;
+
+            processedResults.push_back(processedResult);
+        }
+    }
+
+    // Apply basic punctuation fixing to the deduplicated results
+    auto finalResults = fixPunctuation(processedResults);
+
+    // print the final results
+    for (const auto &result : finalResults)
+    {
+        std::cout << "Cleaned Transcript: " << result.text << std::endl;
+    }
+
+    return finalResults;
 }
 
 void WhisperTranscriber::printSystemInfo() const
