@@ -98,7 +98,7 @@ endif()
 # ============================================================================
 
 # Whisper Wrapper Library - Only this library includes whisper headers
-add_library(whisper_wrapper SHARED
+add_library(whisper_wrapper STATIC
     src/WhisperBridge.cpp
 )
 
