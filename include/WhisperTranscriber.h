@@ -32,10 +32,8 @@ public:
         bool translate = false;         ///< Translate to English if source is not English
         float silenceThreshold = 0.01f; ///< Silence detection threshold
         int maxSegmentLength = 30;      ///< Maximum segment length in seconds
-        bool enableVAD = true;          ///< Enable Voice Activity Detection
+        bool enableVAD = true;          ///< Enable Voice Activity
         bool suppressNonSpeech = true;  ///< Suppress non-speech tokens
-        int minSilenceDurationMs = 300; ///< Minimum silence duration for speech boundaries
-        int speechPadMs = 100;          ///< Padding around speech segments
     };
 
     /**
@@ -123,17 +121,11 @@ private:
     std::atomic<bool> shouldStop_;
     std::function<void(const Result &)> resultCallback_;
 
-    // Audio buffering for real-time processing with overlap
+    // Audio buffering for real-time processing
     std::vector<float> audioBuffer_;
-    std::vector<float> overlapBuffer_;  ///< Buffer for overlap between chunks
     double bufferStartTime_;
     static constexpr size_t BUFFER_SIZE_SECONDS = 10;     ///< Buffer size in seconds
     static constexpr size_t MIN_PROCESS_SIZE_SECONDS = 2; ///< Minimum audio length to process
-    static constexpr float OVERLAP_SECONDS = 0.5f;       ///< Overlap between chunks
-    
-    // Previous transcription results for punctuation fixing
-    std::vector<Result> recentResults_;
-    static constexpr size_t MAX_RECENT_RESULTS = 3;      ///< Keep last 3 results for context
 
     /**
      * @brief Real-time processing thread function
@@ -159,13 +151,6 @@ private:
      * @return Vector of transcription results
      */
     std::vector<Result> extractResults(const whisper_bridge_result &result) const;
-
-    /**
-     * @brief Fix punctuation between consecutive results
-     * @param newResults New transcription results to process
-     * @return Punctuation-corrected results
-     */
-    std::vector<Result> fixPunctuation(const std::vector<Result> &newResults);
 
     /**
      * @brief Print system information and model details
