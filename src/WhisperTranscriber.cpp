@@ -8,9 +8,14 @@
 WhisperTranscriber::WhisperTranscriber(const Config &config)
     : config_(config), whisperContext_(nullptr), initialized_(false), shouldStop_(false), bufferStartTime_(0.0)
 {
-    // Initialize audio buffer
+    // Initialize audio buffers
     const size_t bufferSamples = BUFFER_SIZE_SECONDS * 16000; // 16kHz * seconds
     audioBuffer_.reserve(bufferSamples);
+
+    const size_t overlapSamples = OVERLAP_SECONDS * 16000; // 16kHz * overlap seconds
+    overlapBuffer_.reserve(overlapSamples);
+
+    recentResults_.reserve(MAX_RECENT_RESULTS);
 }
 
 WhisperTranscriber::~WhisperTranscriber()
@@ -41,6 +46,10 @@ bool WhisperTranscriber::initialize()
     params.max_len_ms = config_.maxSegmentLength * 1000;
     params.vad_threshold = config_.silenceThreshold;
     params.use_gpu = false; // Use CPU for compatibility
+    params.enable_vad = config_.enableVAD;
+    params.min_silence_duration_ms = config_.minSilenceDurationMs;
+    params.speech_pad_ms = config_.speechPadMs;
+    params.vad_model_path = "models/ggml-silero-v5.1.2.bin";
 
     // Initialize the bridge
     whisperContext_ = whisper_bridge_init(params);
@@ -70,15 +79,15 @@ std::vector<WhisperTranscriber::Result> WhisperTranscriber::transcribe(const std
 
     // Use the bridge API for transcription
     whisper_bridge_result result = whisper_bridge_transcribe_audio(
-        whisperContext_, 
-        audioData.data(), 
-        audioData.size(), 
-        16000  // sample rate
+        whisperContext_,
+        audioData.data(),
+        audioData.size(),
+        16000 // sample rate
     );
 
     if (!result.success)
     {
-        std::cerr << "Failed to process audio with Whisper: " 
+        std::cerr << "Failed to process audio with Whisper: "
                   << (result.error_msg ? result.error_msg : "Unknown error") << std::endl;
         whisper_bridge_free_result(&result);
         return {};
@@ -139,6 +148,8 @@ void WhisperTranscriber::stopRealTimeProcessing()
         audioQueue_.pop();
     }
     audioBuffer_.clear();
+    overlapBuffer_.clear();
+    recentResults_.clear();
 
     std::cout << "Real-time processing stopped" << std::endl;
 }
@@ -251,19 +262,43 @@ bool WhisperTranscriber::processBuffer()
         return false;
     }
 
-    // Create a copy of the buffer for processing
-    std::vector<float> audioToProcess = audioBuffer_;
+    // Create audio with overlap for processing
+    std::vector<float> audioToProcess;
+
+    // Add overlap from previous chunk (if available)
+    if (!overlapBuffer_.empty())
+    {
+        audioToProcess.insert(audioToProcess.end(), overlapBuffer_.begin(), overlapBuffer_.end());
+    }
+
+    // Add current buffer
+    audioToProcess.insert(audioToProcess.end(), audioBuffer_.begin(), audioBuffer_.end());
+
     double startTime = bufferStartTime_;
+
+    // Save overlap for next chunk (last 0.5 seconds)
+    const size_t overlapSamples = OVERLAP_SECONDS * 16000;
+    if (audioBuffer_.size() >= overlapSamples)
+    {
+        overlapBuffer_.assign(audioBuffer_.end() - overlapSamples, audioBuffer_.end());
+    }
+    else
+    {
+        overlapBuffer_ = audioBuffer_; // Use entire buffer if smaller than overlap
+    }
 
     // Clear the buffer for new audio
     audioBuffer_.clear();
     bufferStartTime_ = 0.0;
 
-    // Transcribe the audio
+    // Transcribe the audio with overlap
     auto results = transcribe(audioToProcess);
 
-    // Send results to callback
-    for (const auto &result : results)
+    // Fix punctuation based on recent results
+    auto correctedResults = fixPunctuation(results);
+
+    // Send corrected results to callback
+    for (const auto &result : correctedResults)
     {
         if (!result.text.empty() && resultCallback_)
         {
@@ -329,6 +364,75 @@ std::vector<WhisperTranscriber::Result> WhisperTranscriber::extractResults(const
     }
 
     return results;
+}
+
+std::vector<WhisperTranscriber::Result> WhisperTranscriber::fixPunctuation(const std::vector<Result> &newResults)
+{
+    if (newResults.empty())
+    {
+        return newResults;
+    }
+
+    std::vector<Result> correctedResults = newResults;
+
+    // If we have recent results, check for punctuation issues
+    if (!recentResults_.empty() && !correctedResults.empty())
+    {
+        const Result &lastResult = recentResults_.back();
+        Result &firstNewResult = correctedResults.front();
+
+        // Simple punctuation fixes
+        std::string &lastText = const_cast<std::string &>(lastResult.text);
+        std::string &newText = firstNewResult.text;
+
+        // Fix case 1: Previous chunk ended with period, new starts with lowercase
+        if (!lastText.empty() && !newText.empty() &&
+            lastText.back() == '.' && std::islower(newText[0]))
+        {
+            // Remove the period from last result and continue the sentence
+            if (lastText.length() > 1)
+            {
+                lastText.pop_back();
+                lastText += ","; // Replace period with comma for continuation
+            }
+        }
+
+        // Fix case 2: Previous chunk ended abruptly, new starts with capital
+        if (!lastText.empty() && !newText.empty() &&
+            lastText.back() != '.' && lastText.back() != '!' && lastText.back() != '?' &&
+            std::isupper(newText[0]))
+        {
+            // Add period to previous result
+            lastText += ".";
+        }
+
+        // Fix case 3: Remove duplicate content from overlap
+        // Simple approach: if new result starts with end of last result, trim it
+        if (lastText.length() > 10 && newText.length() > 10)
+        {
+            std::string lastEnd = lastText.substr(lastText.length() - 10);
+            if (newText.find(lastEnd) == 0)
+            {
+                newText = newText.substr(lastEnd.length());
+                // Trim leading whitespace
+                newText.erase(0, newText.find_first_not_of(" \t\n\r"));
+            }
+        }
+    }
+
+    // Add new results to recent results buffer
+    for (const auto &result : correctedResults)
+    {
+        recentResults_.push_back(result);
+
+        // Keep only the last MAX_RECENT_RESULTS
+        if (recentResults_.size() > MAX_RECENT_RESULTS)
+        {
+            recentResults_.erase(recentResults_.begin());
+        }
+    }
+
+    return correctedResults;
 }
 
 void WhisperTranscriber::printSystemInfo() const

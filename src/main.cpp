@@ -448,6 +448,6 @@ void testLLMSummary()
 
 int main(int argc, char *argv[])
 {
-    // fullFlow(argc, argv);
-    testLLMSummary();
+    fullFlow(argc, argv);
+    // testLLMSummary();
 }
