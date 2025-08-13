@@ -338,8 +338,8 @@ int fullFlow(int argc, char *argv[])
         LLMClient::Config llmConfig;
         llmConfig.modelPath = "models/qwen2.5-0.5b-instruct-q4_k_m.gguf";
         llmConfig.threads = 4; // Adjust based on your M1's capabilities
-        llmConfig.contextSize = 4096;
-        llmConfig.maxTokens = 512;
+        llmConfig.contextSize = 32768;
+        llmConfig.maxTokens = 32768;
         llmConfig.temperature = 0.7f;
 
         LLMClient llmClient(llmConfig);
@@ -392,8 +392,8 @@ void testLLMSummary()
     LLMClient::Config llmConfig;
     llmConfig.modelPath = "models/qwen2.5-0.5b-instruct-q4_k_m.gguf";
     llmConfig.threads = 4;
-    llmConfig.contextSize = 4096;
-    llmConfig.maxTokens = 512;
+    llmConfig.contextSize = 32768;
+    llmConfig.maxTokens = 32768;
     llmConfig.temperature = 0.7f;
 
     LLMClient llmClient(llmConfig);
@@ -418,10 +418,10 @@ void testLLMSummary()
     {
 
         // Print the transcription text
-        std::cout << "📝 Transcription Text:" << std::endl;
-        std::cout << "══════════════════════" << std::endl;
-        std::cout << transcriptionText << std::endl;
-        std::cout << "══════════════════════" << std::endl;
+        // std::cout << "📝 Transcription Text:" << std::endl;
+        // std::cout << "══════════════════════" << std::endl;
+        // std::cout << transcriptionText << std::endl;
+        // std::cout << "══════════════════════" << std::endl;
 
         std::cout << "🧠 Generating summary..." << std::endl;
 

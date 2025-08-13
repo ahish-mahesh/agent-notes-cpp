@@ -22,8 +22,8 @@ public:
     {
         std::string modelPath;    ///< Path to GGUF model file
         int threads = 4;          ///< Number of threads for inference
-        int contextSize = 4096;   ///< Context window size
-        int maxTokens = 1024;     ///< Maximum tokens to generate
+        int contextSize = 32768;  ///< Context window size
+        int maxTokens = 4096;     ///< Maximum tokens to generate
         float temperature = 0.7f; ///< Sampling temperature
         float topP = 0.9f;        ///< Top-p sampling
         bool verbose = false;     ///< Enable verbose logging
@@ -81,8 +81,8 @@ public:
 
 private:
     Config config_;
-    llama_model* model_;      // Forward declared, defined in .cpp
-    llama_context* context_;  // Forward declared, defined in .cpp
+    llama_model *model_;     // Forward declared, defined in .cpp
+    llama_context *context_; // Forward declared, defined in .cpp
     bool initialized_;
 
     /**
@@ -91,19 +91,28 @@ private:
      * @param maxTokens Maximum tokens to generate
      * @return LLM response
      */
-    Response generate(const std::string& prompt, int maxTokens = -1);
+    Response generate(const std::string &prompt, int maxTokens = -1);
+
+    /**
+     * @brief Chat with system and user messages (Qwen format)
+     * @param system_prompt System prompt for context
+     * @param user_message User's message
+     * @param maxTokens Maximum tokens to generate
+     * @return LLM response
+     */
+    Response chat(const std::string &system_prompt, const std::string &user_message, int maxTokens = -1);
 
     /**
      * @brief Tokenize text
      * @param text Input text
      * @return Vector of token IDs
      */
-    std::vector<llama_token> tokenize(const std::string& text);
+    std::vector<llama_token> tokenize(const std::string &text);
 
     /**
      * @brief Detokenize tokens back to text
      * @param tokens Vector of token IDs
      * @return Detokenized text
      */
-    std::string detokenize(const std::vector<llama_token>& tokens);
+    std::string detokenize(const std::vector<llama_token> &tokens);
 };

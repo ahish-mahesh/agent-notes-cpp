@@ -5,11 +5,11 @@ project(AudioTranscriber VERSION 1.0.0)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Ensure the build type is set to Debug for debugging purposes
-set(CMAKE_BUILD_TYPE Debug)
+# # Ensure the build type is set to Debug for debugging purposes
+# set(CMAKE_BUILD_TYPE Debug)
 
-# Add debug flags to generate debug symbols
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
+# # Add debug flags to generate debug symbols
+# set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 # Find required packages
 find_package(PkgConfig REQUIRED)
@@ -58,6 +58,10 @@ ExternalProject_Add(llama_external
         -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_CXX_STANDARD=17
         -DCMAKE_CXX_STANDARD_REQUIRED=ON
+        -DLLAMA_METAL=ON
+        -DGGML_METAL=ON
+        -DGGML_NATIVE=ON
+        -DGGML_ACCELERATE=ON
     INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
     BUILD_BYPRODUCTS
         ${LLAMA_INSTALL_DIR}/lib/libllama.a

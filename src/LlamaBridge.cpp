@@ -155,7 +155,7 @@ llama_bridge_result llama_bridge_generate(
     tokens.resize(n_tokens);
 
     // Clear the KV cache
-    llama_memory_clear(llama_get_memory(ctx->ctx), true);
+    // llama_memory_clear(llama_get_memory(ctx->ctx), true);
 
     // Evaluate the prompt tokens
     struct llama_batch batch = llama_batch_get_one(tokens.data(), tokens.size());
@@ -164,7 +164,7 @@ llama_bridge_result llama_bridge_generate(
     {
         batch.logits[batch.n_tokens - 1] = 1;
     }
-    // TODO: Debug stopped here. Take a look into why the llama_decode is failing
+
     // Also refer to the examples on how others have implemented it.
     if (llama_decode(ctx->ctx, batch) != 0)
     {
@@ -200,7 +200,7 @@ llama_bridge_result llama_bridge_generate(
             break;
         }
 
-        // Convert token to text
+        // Convert token to text first for stop sequence checking
         char token_str[256];
         int n = llama_token_to_piece(vocab, next_token, token_str, sizeof(token_str), 0, false);
         if (n < 0)
@@ -210,11 +210,32 @@ llama_bridge_result llama_bridge_generate(
             return result;
         }
 
-        // Print the string as and when it's generated
-        // std::cout << token_str << " ";
-
         generated_text.append(token_str, n);
         tokens_generated++;
+
+        // Check for Qwen-specific stop sequences
+        if (generated_text.find("<|im_end|>") != std::string::npos ||
+            generated_text.find("<|endoftext|>") != std::string::npos)
+        {
+            // Remove the stop sequence from the output
+            size_t stop_pos = generated_text.find("<|im_end|>");
+            if (stop_pos != std::string::npos)
+            {
+                generated_text = generated_text.substr(0, stop_pos);
+            }
+            else
+            {
+                stop_pos = generated_text.find("<|endoftext|>");
+                if (stop_pos != std::string::npos)
+                {
+                    generated_text = generated_text.substr(0, stop_pos);
+                }
+            }
+            break;
+        }
+
+        // Print the string as and when it's generated
+        // std::cout << token_str << " ";
 
         // Evaluate the new token and request logits for it
         struct llama_batch next_batch = llama_batch_get_one(&next_token, 1);
@@ -253,14 +274,14 @@ llama_bridge_result llama_bridge_chat(
     std::string full_prompt;
     if (system_prompt && strlen(system_prompt) > 0)
     {
-        full_prompt = std::string("<|im_start|>system\n") + system_prompt + 
-                     "<|im_end|>\n<|im_start|>user\n" + user_message + 
-                     "<|im_end|>\n<|im_start|>assistant\n";
+        full_prompt = std::string("<|im_start|>system\n") + system_prompt +
+                      "<|im_end|>\n<|im_start|>user\n" + user_message +
+                      "<|im_end|>\n<|im_start|>assistant\n";
     }
     else
     {
-        full_prompt = std::string("<|im_start|>user\n") + user_message + 
-                     "<|im_end|>\n<|im_start|>assistant\n";
+        full_prompt = std::string("<|im_start|>user\n") + user_message +
+                      "<|im_end|>\n<|im_start|>assistant\n";
     }
 
     return llama_bridge_generate(ctx, full_prompt.c_str(), max_tokens);
