@@ -6,7 +6,9 @@
 
 ## Transcribe
 
-- [ ] Save the transcribed audio to DB
+- [x] Save the transcribed audio to DB
+- [ ] Try out the llama-server instead of directly calling the cpp methods.
+      - This is to check if llama has already been optimized as part of the server, instead of me having to do it manually.
 
 ## DB
 

@@ -13,6 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find required packages
 find_package(PkgConfig REQUIRED)
+find_package(CURL REQUIRED)
 pkg_check_modules(SQLITE3 REQUIRED sqlite3)
 
 # Include ExternalProject module
@@ -183,6 +184,7 @@ add_executable(audio-transcriber
     src/AudioBuffer.cpp
     src/DBHelper.cpp
     src/LLMClient.cpp
+    src/LlamaServer.cpp
 )
 
 # Make executable depend on wrapper libraries
@@ -193,6 +195,7 @@ target_include_directories(audio-transcriber PRIVATE
     include
     third_party/rtaudio
     ${SQLITE3_INCLUDE_DIRS}
+    ${NLOHMANN_JSON_INCLUDE_DIR}
 )
 
 # Link against wrapper libraries (NOT directly against whisper/llama)
@@ -201,6 +204,8 @@ target_link_libraries(audio-transcriber PRIVATE
     llama_wrapper
     ${AUDIO_LIBRARY}
     ${SQLITE3_LIBRARIES}
+    nlohmann_json::nlohmann_json
+    CURL::libcurl
 )
 
 # Set RPATH so executable can find wrapper libraries at runtime
@@ -241,6 +246,24 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(llama_wrapper PRIVATE
         -Wall -Wextra -O2
     )
+endif()
+
+# Find CURL
+find_package(CURL REQUIRED)
+
+# Find nlohmann_json (header-only, modern CMake)
+find_package(nlohmann_json CONFIG QUIET)
+if (nlohmann_json_FOUND)
+    message(STATUS "Found nlohmann_json CMake package")
+else()
+    # Fallback: find the header manually
+    find_path(NLOHMANN_JSON_INCLUDE_DIR nlohmann/json.hpp
+        PATHS /usr/local/include /usr/include /opt/homebrew/include
+        PATH_SUFFIXES nlohmann
+    )
+    if(NOT NLOHMANN_JSON_INCLUDE_DIR)
+        message(FATAL_ERROR "nlohmann/json not found. Please install nlohmann_json.")
+    endif()
 endif()
 
 # Install target

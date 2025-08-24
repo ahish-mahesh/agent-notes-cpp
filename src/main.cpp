@@ -27,6 +27,7 @@
 #include "WhisperTranscriber.h"
 #include "DBHelper.h"
 #include "LLMClient.h"
+#include "LlamaServer.h"
 
 #define USE_RTAUDIO 1
 
@@ -386,6 +387,59 @@ int fullFlow(int argc, char *argv[])
     return 0;
 }
 
+void testLlamaServer()
+{
+    LLamaServer llamaServer;
+
+    // Get the transcription text from SampleText.txt
+    std::ifstream inputFile("/Users/ahishmahesh/Personal/Programming/cpp/agent-notes-backend/SampleText.txt");
+    std::string transcriptionText;
+
+    if (inputFile)
+    {
+        std::stringstream buffer;
+        buffer << inputFile.rdbuf();
+        transcriptionText = buffer.str();
+    }
+    else
+    {
+        std::cerr << "❌ Failed to open SampleText.txt" << std::endl;
+        return;
+    }
+
+    if (llamaServer.initialize())
+    {
+        std::cout << "LLamaServer initialized successfully." << std::endl;
+
+        // Use chat format optimized for small models with explicit stopping
+        std::string system_prompt = "You are a helpful assistant that creates concise summaries of lecture transcripts. Always end your summary with a clear conclusion.";
+
+        std::string user_message = "Summarize this university lecture transcript using this EXACT format:\n\n"
+                                   "## Key Concepts and Definitions:\n"
+                                   "[List the main concepts and their definitions here]\n\n"
+                                   "## Important Formulas or Theories:\n"
+                                   "[List any formulas, theories, or scientific principles mentioned]\n\n"
+                                   "## Examples Given by the Professor:\n"
+                                   "[List specific examples or case studies mentioned]\n\n"
+                                   "## Potential Exam Topics:\n"
+                                   "[List topics that would likely appear on an exam]\n\n"
+                                   "Transcript:\n\n" +
+                                   transcriptionText +
+                                   "\n\nUse the exact section headers shown above and organize your response accordingly." +
+                                   "\n\nAfter providing the summary with the above mentioned format, end with 'Summary complete.'";
+
+        std::string fullTranscription = system_prompt + "\n\n" + user_message;
+        std::string response = llamaServer.generateResponse(fullTranscription);
+        std::cout << "LLamaServer response: " << response << std::endl;
+
+        llamaServer.shutdown();
+    }
+    else
+    {
+        std::cerr << "Failed to initialize LLamaServer." << std::endl;
+    }
+}
+
 void testLLMSummary()
 {
     // Test case for LLM summary generation
@@ -449,5 +503,6 @@ void testLLMSummary()
 int main(int argc, char *argv[])
 {
     // fullFlow(argc, argv);
-    testLLMSummary();
+    // testLLMSummary();
+    testLlamaServer();
 }
