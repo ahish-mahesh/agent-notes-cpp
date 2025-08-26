@@ -17,7 +17,7 @@ An intelligent, real-time audio transcription and note-taking application with A
 
 ## 🏗️ Architecture
 
-```
+```t
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐
 │   Microphone    │───▶│   AudioCapture   │───▶│ WhisperTranscriber  │
 └─────────────────┘    │  (RtAudio/PA)    │    │   (whisper.cpp)     │
@@ -88,7 +88,7 @@ curl -L -o ../qwen2.5-0.5b-instruct-q4_0.gguf https://huggingface.co/Qwen/Qwen2.
 
 ### Expected Output
 
-```
+```t
 🎤 Agent Notes C++ v1.0.0
 Intelligent audio transcription with AI summarization
 ═══════════════════════════════════════════════════
@@ -123,8 +123,6 @@ Intelligent audio transcription with AI summarization
 | **Transcription** | Whisper base.en | 142MB | 16x realtime | Good ⭐ |
 | **Summarization** | Qwen 2.5 0.5B | ~300MB | ~2-3s | Efficient ⭐ |
 
-*⭐ Optimized for real-time performance and resource efficiency*
-
 ### System Requirements
 
 - **CPU**: Any modern processor (Intel/AMD/Apple Silicon)
@@ -151,7 +149,7 @@ Intelligent audio transcription with AI summarization
 
 ## 📁 Project Structure
 
-```
+```t
 agent-notes-cpp/
 ├── 📁 include/                 # Header files
 │   ├── AudioCapture.h         # Audio input interface  
@@ -249,7 +247,8 @@ llmConfig.temperature = 0.3;       // Conservative generation
 
 ### Common Issues
 
-**"Failed to load LLM model"**
+#### "Failed to load LLM model"
+
 ```bash
 # Verify model file exists and is valid
 ls -la *.gguf
@@ -258,7 +257,8 @@ ls -la *.gguf
 ./build/agent-notes --test-llm qwen2.5-0.5b-instruct-q4_0.gguf
 ```
 
-**"Database initialization failed"**
+### "Database initialization failed"
+
 ```bash
 # Check write permissions
 touch test.db && rm test.db
@@ -267,7 +267,8 @@ touch test.db && rm test.db
 sqlite3 --version
 ```
 
-**High memory usage**
+### High memory usage
+
 ```bash
 # Use smaller models
 ./build/agent-notes ggml-tiny.en.bin qwen2.5-0.5b-instruct-q4_0.gguf
@@ -278,6 +279,7 @@ sqlite3 --version
 ## 🚀 Recent Updates
 
 ### Version History
+
 - **Latest**: Model optimization with Qwen 2.5 0.5B, enhanced prompts
 - **v0.9**: LLM summarization integration, static library builds  
 - **v0.8**: Database persistence, DBHelper class implementation

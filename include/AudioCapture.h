@@ -3,10 +3,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
-#include <thread>
 #include <vector>
-
-#include "RtAudio.h"
 
 #ifdef USE_PORTAUDIO
 #include "portaudio.h"

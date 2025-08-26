@@ -15,7 +15,6 @@
 
 #include <chrono>
 #include <csignal>
-#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -26,7 +25,6 @@
 #include "AudioCapture.h"
 #include "DBHelper.h"
 #include "LLMClient.h"
-#include "LlamaServer.h"
 #include "WhisperTranscriber.h"
 
 #define USE_RTAUDIO 1
@@ -81,22 +79,6 @@ void printUsage(const char *programName) {
   std::cout << "Download models from:" << std::endl;
   std::cout << "  https://huggingface.co/ggerganov/whisper.cpp/tree/main"
             << std::endl;
-}
-
-/**
- * @brief Get current timestamp as formatted string
- */
-std::string getCurrentTimestamp() {
-  auto now = std::chrono::system_clock::now();
-  auto time_t = std::chrono::system_clock::to_time_t(now);
-  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                now.time_since_epoch()) %
-            1000;
-
-  std::stringstream ss;
-  ss << std::put_time(std::localtime(&time_t), "%H:%M:%S");
-  ss << "." << std::setfill('0') << std::setw(3) << ms.count();
-  return ss.str();
 }
 
 /**
@@ -411,6 +393,6 @@ void testLLMSummary() {
 }
 
 int main(int argc, char *argv[]) {
-  // fullFlow(argc, argv);
-  testLLMSummary();
+  fullFlow(argc, argv);
+  //   testLLMSummary();
 }

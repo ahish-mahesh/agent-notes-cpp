@@ -2,10 +2,8 @@
 
 #include <atomic>
 #include <curl/curl.h>
-#include <memory>
 #include <nlohmann/json.hpp>
 #include <string>
-#include <vector>
 
 // pid_t is POSIX; include for declaration
 #include <sys/types.h>

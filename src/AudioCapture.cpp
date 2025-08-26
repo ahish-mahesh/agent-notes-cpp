@@ -1,7 +1,8 @@
 #include "AudioCapture.h"
-#include <algorithm>
 #include <cstring>
 #include <iostream>
+
+#include "RtAudio.h"
 
 AudioCapture::AudioCapture()
     : AudioCapture(Config{}) // Delegate to the parametrized constructor
