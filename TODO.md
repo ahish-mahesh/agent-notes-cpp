@@ -10,6 +10,16 @@
 - [ ] Try out the llama-server instead of directly calling the cpp methods.
       - This is to check if llama has already been optimized as part of the server, instead of me having to do it manually.
 
+## Chat
+
+- [ ] Add chat functionality.
+
+## CLI
+
+- [ ] Implement a basic CLI
+  - [ ] CRUD operations of transcripts
+  - [ ] Chat functionality with transcripts
+
 ## DB
 
 - [x] Add SQLLite to CMakeLists

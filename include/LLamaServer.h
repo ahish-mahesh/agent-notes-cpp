@@ -1,22 +1,28 @@
 #pragma once
 
-#include <string>
-#include <vector>
+#include <atomic>
+#include <curl/curl.h>
 #include <memory>
 #include <nlohmann/json.hpp>
-#include <curl/curl.h>
+#include <string>
+#include <vector>
 
-class LLamaServer
-{
+// pid_t is POSIX; include for declaration
+#include <sys/types.h>
+
+class LLamaServer {
 public:
-    LLamaServer();
-    ~LLamaServer();
+  LLamaServer(const std::string &modelPath);
+  ~LLamaServer();
 
-    bool initialize();
-    void shutdown();
+  bool initialize();
+  void shutdown();
 
-    std::string generateResponse(const std::string &prompt);
+  std::string generateResponse(const std::string &prompt);
 
 private:
-    // Add any other necessary member variables
+  std::string _modelPath;
+  // PID of the background llama-server process (or -1 if not running)
+  pid_t serverPid_ = -1;
+  std::atomic<bool> serverRunning_{false};
 };

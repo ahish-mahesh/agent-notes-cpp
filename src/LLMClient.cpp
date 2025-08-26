@@ -1,5 +1,5 @@
 #include "LLMClient.h"
-#include "LlamaBridge.h"
+#include "LLamaServer.h"
 
 #include <iostream>
 #include <chrono>
@@ -10,18 +10,17 @@
 #include <ctime>
 
 LLMClient::LLMClient(const Config &config)
-    : config_(config), model_(nullptr), context_(nullptr), initialized_(false)
+    : config_(config), llamaServer_(nullptr), initialized_(false)
 {
 }
 
 LLMClient::~LLMClient()
 {
-    if (context_)
+    if (llamaServer_)
     {
-        llama_bridge_free(reinterpret_cast<llama_bridge_context *>(context_));
-        context_ = nullptr;
+        llamaServer_->shutdown();
+        llamaServer_.reset();
     }
-    model_ = nullptr; // Not used with bridge API
 }
 
 bool LLMClient::initialize()
@@ -37,25 +36,15 @@ bool LLMClient::initialize()
         return false;
     }
 
-    // Initialize llama bridge
-    llama_bridge_params params = {};
-    params.model_path = config_.modelPath.c_str();
-    params.threads = config_.threads;
-    params.context_size = config_.contextSize;
-    params.max_tokens = config_.maxTokens;
-    params.temperature = config_.temperature;
-    params.top_p = config_.topP;
-    params.verbose = config_.verbose;
-
-    llama_bridge_context *bridge_ctx = llama_bridge_init(params);
-    if (!bridge_ctx)
+    // Initialize LLamaServer (network-based server)
+    llamaServer_ = std::make_unique<LLamaServer>(config_.modelPath);
+    if (!llamaServer_->initialize())
     {
-        std::cerr << "❌ Failed to initialize LLM bridge" << std::endl;
+        std::cerr << "❌ Failed to initialize LLamaServer" << std::endl;
+        llamaServer_.reset();
         return false;
     }
 
-    context_ = reinterpret_cast<llama_context *>(bridge_ctx);
-    model_ = nullptr; // Not used with bridge API
     initialized_ = true;
     std::cout << "✅ LLM client initialized with model: " << config_.modelPath << std::endl;
     return true;
@@ -115,31 +104,25 @@ LLMClient::Response LLMClient::generate(const std::string &prompt, int maxTokens
     if (maxTokens <= 0)
         maxTokens = config_.maxTokens;
 
-    if (!initialized_ || !context_)
+    if (!initialized_ || !llamaServer_)
     {
         return {.success = false, .error = "LLM not properly initialized"};
     }
 
-    // Use the bridge API for generation
-    llama_bridge_context *bridge_ctx = reinterpret_cast<llama_bridge_context *>(context_);
-    llama_bridge_result bridge_result = llama_bridge_generate(bridge_ctx, prompt.c_str(), maxTokens);
-
     Response result;
-    result.success = bridge_result.success;
-
-    if (bridge_result.success)
+    try
     {
-        result.text = bridge_result.text ? std::string(bridge_result.text) : "";
-        result.tokensGenerated = bridge_result.tokens_generated;
-        result.inferenceTimeMs = bridge_result.inference_time_ms;
+        std::string text = llamaServer_->generateResponse(prompt);
+        result.success = true;
+        result.text = text;
+        result.tokensGenerated = 0; // Not available from server response
+        result.inferenceTimeMs = 0.0;
     }
-    else
+    catch (const std::exception &e)
     {
-        result.error = bridge_result.error_msg ? std::string(bridge_result.error_msg) : "Unknown error";
+        result.success = false;
+        result.error = e.what();
     }
-
-    // Clean up bridge result
-    llama_bridge_free_result(&bridge_result);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -153,90 +136,7 @@ LLMClient::Response LLMClient::generate(const std::string &prompt, int maxTokens
 
 LLMClient::Response LLMClient::chat(const std::string &system_prompt, const std::string &user_message, int maxTokens)
 {
-    auto start = std::chrono::high_resolution_clock::now();
-
-    if (maxTokens <= 0)
-        maxTokens = config_.maxTokens;
-
-    if (!initialized_ || !context_)
-    {
-        return {.success = false, .error = "LLM not properly initialized"};
-    }
-
-    // Use the bridge chat API with proper Qwen formatting
-    llama_bridge_context *bridge_ctx = reinterpret_cast<llama_bridge_context *>(context_);
-    llama_bridge_result bridge_result = llama_bridge_chat(bridge_ctx, system_prompt.c_str(), user_message.c_str(), maxTokens);
-
-    Response result;
-    result.success = bridge_result.success;
-
-    if (bridge_result.success)
-    {
-        result.text = bridge_result.text ? std::string(bridge_result.text) : "";
-        result.tokensGenerated = bridge_result.tokens_generated;
-        result.inferenceTimeMs = bridge_result.inference_time_ms;
-    }
-    else
-    {
-        result.error = bridge_result.error_msg ? std::string(bridge_result.error_msg) : "Unknown error";
-    }
-
-    // Clean up bridge result
-    llama_bridge_free_result(&bridge_result);
-
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    if (result.success && result.inferenceTimeMs == 0.0)
-    {
-        result.inferenceTimeMs = static_cast<double>(duration.count());
-    }
-
-    return result;
-}
-
-std::vector<llama_token> LLMClient::tokenize(const std::string &text)
-{
-    if (!context_)
-    {
-        return {};
-    }
-
-    llama_bridge_context *bridge_ctx = reinterpret_cast<llama_bridge_context *>(context_);
-    llama_bridge_tokens bridge_tokens = llama_bridge_tokenize(bridge_ctx, text.c_str());
-
-    std::vector<llama_token> tokens;
-    if (bridge_tokens.tokens && bridge_tokens.count > 0)
-    {
-        tokens.resize(bridge_tokens.count);
-        for (int i = 0; i < bridge_tokens.count; i++)
-        {
-            tokens[i] = bridge_tokens.tokens[i];
-        }
-    }
-
-    llama_bridge_free_tokens(&bridge_tokens);
-    return tokens;
-}
-
-std::string LLMClient::detokenize(const std::vector<llama_token> &tokens)
-{
-    if (!context_ || tokens.empty())
-    {
-        return "";
-    }
-
-    llama_bridge_context *bridge_ctx = reinterpret_cast<llama_bridge_context *>(context_);
-    llama_bridge_tokens bridge_tokens;
-    bridge_tokens.count = tokens.size();
-    bridge_tokens.tokens = const_cast<int *>(tokens.data());
-
-    char *result_str = llama_bridge_detokenize(bridge_ctx, &bridge_tokens);
-    std::string result = result_str ? std::string(result_str) : "";
-
-    if (result_str)
-    {
-        free(result_str);
-    }
-
-    return result;
+    // Compose a single prompt for the server
+    std::string full_prompt = system_prompt + "\n\n" + user_message;
+    return generate(full_prompt, maxTokens);
 }

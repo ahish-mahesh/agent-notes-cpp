@@ -4,6 +4,7 @@ project(AudioTranscriber VERSION 1.0.0)
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # # Ensure the build type is set to Debug for debugging purposes
 # set(CMAKE_BUILD_TYPE Debug)
@@ -196,6 +197,7 @@ target_include_directories(audio-transcriber PRIVATE
     third_party/rtaudio
     ${SQLITE3_INCLUDE_DIRS}
     ${NLOHMANN_JSON_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/third_party/websocketpp  # <-- add websocketpp headers
 )
 
 # Link against wrapper libraries (NOT directly against whisper/llama)

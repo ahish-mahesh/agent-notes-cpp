@@ -9,6 +9,8 @@ struct llama_model;
 struct llama_context;
 typedef int32_t llama_token;
 
+class LLamaServer; // forward declaration
+
 /**
  * @brief LLM client for text summarization and chat using llama.cpp
  */
@@ -81,8 +83,7 @@ public:
 
 private:
     Config config_;
-    llama_model *model_;     // Forward declared, defined in .cpp
-    llama_context *context_; // Forward declared, defined in .cpp
+    std::unique_ptr<LLamaServer> llamaServer_;
     bool initialized_;
 
     /**
@@ -101,18 +102,4 @@ private:
      * @return LLM response
      */
     Response chat(const std::string &system_prompt, const std::string &user_message, int maxTokens = -1);
-
-    /**
-     * @brief Tokenize text
-     * @param text Input text
-     * @return Vector of token IDs
-     */
-    std::vector<llama_token> tokenize(const std::string &text);
-
-    /**
-     * @brief Detokenize tokens back to text
-     * @param tokens Vector of token IDs
-     * @return Detokenized text
-     */
-    std::string detokenize(const std::vector<llama_token> &tokens);
 };

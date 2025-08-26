@@ -115,6 +115,15 @@ else
     print_status "RtAudio submodule already exists"
 fi
 
+# Add websocketpp
+if [ ! -d "third_party/websocketpp" ]; then
+    print_status "Adding websocketpp submodule..."
+    git submodule add https://github.com/zaphoyd/websocketpp.git third_party/websocketpp
+    print_success "websocketpp submodule added"
+else
+    print_status "websocketpp submodule already exists"
+fi
+
 # Update submodules
 print_status "Updating submodules..."
 git submodule update --init --recursive
@@ -152,7 +161,7 @@ cd build
 
 # 7. Configure with CMake
 print_status "Configuring project with CMake..."
-cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_PORTAUDIO=ON
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DUSE_PORTAUDIO=ON
 
 print_success "Project configured successfully"
 
@@ -164,13 +173,35 @@ print_success "Project built successfully"
 
 cd ..
 
+# Create the Models Folder
+print_status "Creating models directory..."
+mkdir -p models
+
 # 9. Download a basic model
 print_status "Downloading Whisper base model..."
-if [ ! -f "ggml-base.en.bin" ]; then
-    curl -L -o ggml-base.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
-    print_success "Base model downloaded (ggml-base.en.bin)"
+if [ ! -f "models/ggml-base.en.bin" ]; then
+    curl -L -o models/ggml-base.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+    print_success "Base model downloaded (models/ggml-base.en.bin)"
 else
     print_status "Base model already exists"
+fi
+
+# 9.b Download a llama-server model for local testing (qwen2.5-0.5b-instruct)
+print_status "Downloading llama-server model..."
+MODEL_DIR="models"
+MODEL_FILE="$MODEL_DIR/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+if [ ! -f "$MODEL_FILE" ]; then
+    print_status "Creating models directory..."
+    mkdir -p "$MODEL_DIR"
+    print_status "Downloading model to $MODEL_FILE (this may take a while)..."
+    # Attempt to download from Hugging Face; if it fails, notify the user so they can download manually
+    if curl -L --fail -o "$MODEL_FILE" "https://huggingface.co/qwen/qwen2.5-0.5b-instruct-q4_k_m/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"; then
+        print_success "Model downloaded ($MODEL_FILE)"
+    else
+        print_warning "Automatic download failed. Please download the model manually from Hugging Face and place it at $MODEL_FILE"
+    fi
+else
+    print_status "Model already exists: $MODEL_FILE"
 fi
 
 # 10. Create a simple run script
@@ -180,12 +211,15 @@ cat > run.sh << 'EOF'
 
 # Simple run script for Audio Transcriber
 
+# Start the llama-server
+llama-server --model $MODEL_FILE &
+
 if [ ! -f "build/audio-transcriber" ]; then
     echo "❌ Binary not found. Please run ./setup.sh first"
     exit 1
 fi
 
-MODEL_FILE="ggml-base.en.bin"
+MODEL_FILE="models/ggml-base.en.bin"
 if [ ! -f "$MODEL_FILE" ]; then
     echo "❌ Model file not found: $MODEL_FILE"
     echo "Please download a model or run ./setup.sh"

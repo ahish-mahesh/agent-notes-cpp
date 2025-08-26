@@ -70,15 +70,15 @@ std::vector<WhisperTranscriber::Result> WhisperTranscriber::transcribe(const std
 
     // Use the bridge API for transcription
     whisper_bridge_result result = whisper_bridge_transcribe_audio(
-        whisperContext_, 
-        audioData.data(), 
-        audioData.size(), 
-        16000  // sample rate
+        whisperContext_,
+        audioData.data(),
+        audioData.size(),
+        16000 // sample rate
     );
 
     if (!result.success)
     {
-        std::cerr << "Failed to process audio with Whisper: " 
+        std::cerr << "Failed to process audio with Whisper: "
                   << (result.error_msg ? result.error_msg : "Unknown error") << std::endl;
         whisper_bridge_free_result(&result);
         return {};
