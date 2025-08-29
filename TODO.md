@@ -2,13 +2,14 @@
 
 ## Web-Socket Server
 
-- [ ] Implement a simple web-socket API in C++ and test it using postman
+- [ ]Implement a simple web-socket API in C++ and test it using postman
 
 ## Transcribe
 
 - [x] Save the transcribed audio to DB
-- [ ] Try out the llama-server instead of directly calling the cpp methods.
-      - This is to check if llama has already been optimized as part of the server, instead of me having to do it manually.
+- [x] Try out the llama-server instead of directly calling the cpp methods.
+      - This is to check if llama has already been optimized as part of the **server**, instead of me having to do it manually.
+      - Post note: This approach seems simpler. Decided to go ahead with this.
 
 ## Chat
 
@@ -16,7 +17,7 @@
 
 ## CLI
 
-- [ ] Implement a basic CLI
+- [x] Implement a basic CLI
   - [ ] CRUD operations of transcripts
   - [ ] Chat functionality with transcripts
 

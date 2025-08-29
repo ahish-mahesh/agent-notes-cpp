@@ -35,7 +35,7 @@ bool WhisperTranscriber::initialize() {
   params.threads = config_.threads;
   params.max_len_ms = config_.maxSegmentLength * 1000;
   params.vad_threshold = config_.silenceThreshold;
-  params.use_gpu = false; // Use CPU for compatibility
+  params.use_gpu = true; // Use GPU for acceleration
 
   // Initialize the bridge
   whisperContext_ = whisper_bridge_init(params);
@@ -64,9 +64,7 @@ WhisperTranscriber::transcribe(const std::vector<float> &audioData) {
 
   // Use the bridge API for transcription
   whisper_bridge_result result = whisper_bridge_transcribe_audio(
-      whisperContext_, audioData.data(), audioData.size(),
-      16000 // sample rate
-  );
+      whisperContext_, audioData.data(), audioData.size());
 
   if (!result.success) {
     std::cerr << "Failed to process audio with Whisper: "

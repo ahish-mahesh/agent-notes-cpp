@@ -231,16 +231,85 @@ bool AudioCapture::startRtAudio() {
 
 #ifdef USE_PORTAUDIO
 bool AudioCapture::startPortAudio() {
-  PaStreamParameters inputParameters;
-  inputParameters.device = config_.deviceId;
-  if (inputParameters.device == paNoDevice) {
-    inputParameters.device = Pa_GetDefaultInputDevice();
+  // PaStreamParameters inputParameters;
+  // inputParameters.device = config_.deviceId;
+  // if (inputParameters.device == paNoDevice) {
+  //   inputParameters.device = Pa_GetDefaultInputDevice();
+  // }
+
+  // inputParameters.channelCount = config_.channels;
+  // inputParameters.sampleFormat = paFloat32;
+  // inputParameters.suggestedLatency =
+  //     Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
+  // inputParameters.hostApiSpecificStreamInfo = nullptr;
+  // Resolve & validate input device
+  PaDeviceIndex device = static_cast<PaDeviceIndex>(config_.deviceId);
+  int deviceCount = Pa_GetDeviceCount();
+  if (deviceCount <= 0) {
+    std::cerr << "PortAudio: no devices available" << std::endl;
+    return false;
   }
 
+  // If out of range, use default input
+  if (device < 0 || device >= deviceCount) {
+    device = Pa_GetDefaultInputDevice();
+  }
+
+  // If default is invalid, scan for first input-capable device
+  if (device == paNoDevice) {
+    for (int i = 0; i < deviceCount; ++i) {
+      const PaDeviceInfo *cand = Pa_GetDeviceInfo(i);
+      if (cand && cand->maxInputChannels > 0) {
+        device = i;
+        break;
+      }
+    }
+  }
+
+  // Loop through the devices and find a device which has input channels
+  for (int i = 0; i < deviceCount; ++i) {
+    const PaDeviceInfo *cand = Pa_GetDeviceInfo(i);
+    if (cand && cand->maxInputChannels > 0) {
+      if (strcmp(cand->name, "MacBook Air Microphone") == 0 &&
+          cand->maxInputChannels > 0) // Specific device preference
+      {
+        device = i;
+        std::cout << "PortAudio: found input device #" << i << " \""
+                  << cand->name << "\" inMax=" << cand->maxInputChannels
+                  << std::endl;
+        break;
+      }
+
+      // device = i;
+      // break;
+    }
+  }
+
+  const PaDeviceInfo *info =
+      (device != paNoDevice) ? Pa_GetDeviceInfo(device) : nullptr;
+  if (!info || info->maxInputChannels == 0) {
+    std::cerr << "PortAudio: no input-capable device found" << std::endl;
+    return false;
+  }
+
+  // Normalize & clamp channel count
+  if (config_.channels == 0)
+    config_.channels = 1;
+  if (config_.channels > static_cast<unsigned>(info->maxInputChannels)) {
+    std::cout << "PortAudio: reducing channels from " << config_.channels
+              << " to " << info->maxInputChannels << std::endl;
+    config_.channels = info->maxInputChannels;
+  }
+
+  // Persist resolved device
+  config_.deviceId = static_cast<unsigned>(device);
+
+  // Fill stream parameters after validation
+  PaStreamParameters inputParameters;
+  inputParameters.device = device;
   inputParameters.channelCount = config_.channels;
   inputParameters.sampleFormat = paFloat32;
-  inputParameters.suggestedLatency =
-      Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
+  inputParameters.suggestedLatency = info->defaultLowInputLatency;
   inputParameters.hostApiSpecificStreamInfo = nullptr;
 
   PaError err = Pa_OpenStream(&paStream_, &inputParameters,

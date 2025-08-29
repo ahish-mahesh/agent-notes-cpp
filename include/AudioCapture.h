@@ -9,6 +9,10 @@
 #include "portaudio.h"
 #endif
 
+#ifdef USE_RTAUDIO
+#include "RtAudio.h"
+#endif
+
 #include "AudioBuffer.h"
 
 /**
@@ -26,8 +30,8 @@ public:
   struct Config {
     unsigned int sampleRate = 16000; ///< Target sample rate for Whisper
     unsigned int channels = 1;       ///< Mono audio
-    unsigned int bufferSize = 128;   ///< Audio buffer size in frames
-    unsigned int deviceId = 0;       ///< Audio device ID (0 = default)
+    unsigned int bufferSize = 512;   ///< Audio buffer size in frames
+    unsigned int deviceId = 2;       ///< Audio device ID (0 = default)
 
     /**
      * @brief Default constructor

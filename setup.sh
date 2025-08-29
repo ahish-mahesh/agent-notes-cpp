@@ -211,9 +211,6 @@ cat > run.sh << 'EOF'
 
 # Simple run script for Audio Transcriber
 
-# Start the llama-server
-llama-server --model $MODEL_FILE &
-
 if [ ! -f "build/audio-transcriber" ]; then
     echo "❌ Binary not found. Please run ./setup.sh first"
     exit 1

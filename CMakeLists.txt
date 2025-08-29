@@ -107,7 +107,8 @@ add_library(whisper_wrapper STATIC
 add_dependencies(whisper_wrapper whisper_external)
 
 # PRIVATE includes - whisper headers are isolated to this library
-target_include_directories(whisper_wrapper PRIVATE
+target_include_directories(whisper_wrapper 
+    SYSTEM PRIVATE
     include
     ${WHISPER_INSTALL_DIR}/include
 )
@@ -144,7 +145,7 @@ add_library(llama_wrapper SHARED
 add_dependencies(llama_wrapper llama_external)
 
 # PRIVATE includes - llama headers are isolated to this library
-target_include_directories(llama_wrapper PRIVATE
+target_include_directories(llama_wrapper SYSTEM PRIVATE
     include
     ${LLAMA_INSTALL_DIR}/include
 )
@@ -186,13 +187,14 @@ add_executable(audio-transcriber
     src/DBHelper.cpp
     src/LLMClient.cpp
     src/LlamaServer.cpp
+    src/AgentNotesCli.cpp
 )
 
 # Make executable depend on wrapper libraries
 add_dependencies(audio-transcriber whisper_wrapper llama_wrapper)
 
 # SAFE includes - only our own headers and system headers
-target_include_directories(audio-transcriber PRIVATE
+target_include_directories(audio-transcriber SYSTEM PRIVATE
     include
     third_party/rtaudio
     ${SQLITE3_INCLUDE_DIRS}

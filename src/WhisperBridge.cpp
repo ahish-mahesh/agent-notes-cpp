@@ -148,7 +148,7 @@ void whisper_bridge_add_audio(whisper_bridge_context *ctx,
   // For now, process each audio chunk immediately
   // In a real implementation, you'd buffer audio and process in chunks
   whisper_bridge_result result =
-      whisper_bridge_transcribe_audio(ctx, audio_data, audio_len, 16000);
+      whisper_bridge_transcribe_audio(ctx, audio_data, audio_len);
 
   if (ctx->callback && result.success && result.text &&
       strlen(result.text) > 0) {

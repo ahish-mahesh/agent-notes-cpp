@@ -1,0 +1,7 @@
+CompileFlags:
+	Add: [
+		"-isystem", "${workspaceRoot}/third_party/llama.cpp/include",
+		"-isystem", "${workspaceRoot}/third_party/whisper.cpp/include",
+		"-isystem", "${workspaceRoot}/third_party/rtaudio",
+		"-isystem", "${workspaceRoot}/third_party/websocketpp",
+	]
