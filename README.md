@@ -20,7 +20,7 @@ An intelligent, real-time audio transcription and note-taking application with A
 ```t
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐
 │   Microphone    │───▶│   AudioCapture   │───▶│ WhisperTranscriber  │
-└─────────────────┘    │  (RtAudio/PA)    │    │   (whisper.cpp)     │
+└─────────────────┘    │  (RtAudio/PA)    │    │  (WhisperBridge)    │
                         └──────────────────┘    └─────────────────────┘
                                  │                         │
                                  ▼                         ▼
@@ -32,13 +32,19 @@ An intelligent, real-time audio transcription and note-taking application with A
                                                            ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐
 │   SQLite DB     │◀───│    DBHelper      │◀───│     LLMClient       │
-│  (Persistence)  │    │   (Database)     │    │  (llama.cpp/Qwen)   │
+│  (Persistence)  │    │   (Database)     │    │  (LlamaBridge/Qwen) │
 └─────────────────┘    └──────────────────┘    └─────────────────────┘
+                                 │                         │
+                                 ▼                         ▲
+                        ┌──────────────────┐    ┌─────────────────────┐
+                        │  Stored Notes    │    │    LlamaServer      │
+                        │ & Transcriptions │    │ (Background Process)│
+                        └──────────────────┘    └─────────────────────┘
                                  │                         │
                                  ▼                         ▼
                         ┌──────────────────┐    ┌─────────────────────┐
-                        │  Stored Notes    │    │   AI Summaries      │
-                        │ & Transcriptions │    │   [Smart Insights]  │
+                        │  AgentNotesCli   │    │   AI Summaries      │
+                        │ (User Interface) │    │   [Smart Insights]  │
                         └──────────────────┘    └─────────────────────┘
 ```
 
@@ -54,21 +60,17 @@ An intelligent, real-time audio transcription and note-taking application with A
 
 ```bash
 # Clone with submodules
-git clone --recursive https://github.com/ahish-mahesh/agent-notes-cpp.git
-cd agent-notes-cpp
+git clone --recursive https://github.com/ahish-mahesh/agent-notes-backend.git
+cd agent-notes-backend
 
-# Create build directory
-mkdir build && cd build
+# Complete setup with dependencies, build, and model download
+./setup.sh
 
-# Configure and build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
-
-# Download Whisper model
-curl -L -o ../ggml-base.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
-
-# Download Qwen 2.5 0.5B model for summarization
-curl -L -o ../qwen2.5-0.5b-instruct-q4_0.gguf https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf
+# Alternative: Manual setup
+# mkdir build && cd build
+# cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_PORTAUDIO=ON
+# make -j$(nproc)  # Linux
+# make -j$(sysctl -n hw.ncpu)  # macOS
 ```
 
 ## 🎮 Usage
@@ -76,42 +78,63 @@ curl -L -o ../qwen2.5-0.5b-instruct-q4_0.gguf https://huggingface.co/Qwen/Qwen2.
 ### Basic Usage
 
 ```bash
-# Start transcription and summarization
-./build/agent-notes ggml-base.en.bin qwen2.5-0.5b-instruct-q4_0.gguf
+# Quick start with run script
+./run.sh
+
+# Start with specific models and options
+./build/audio-transcriber Models/ggml-base.en.bin Models/qwen2.5-0.5b-instruct-q4_k_m.gguf
 
 # List available audio devices
-./build/agent-notes --list-devices
+./build/audio-transcriber --list-devices
 
 # Use specific device
-./build/agent-notes ggml-base.en.bin qwen2.5-0.5b-instruct-q4_0.gguf --device 1
+./build/audio-transcriber Models/ggml-base.en.bin Models/qwen2.5-0.5b-instruct-q4_k_m.gguf --device 1 --language en --threads 8
 ```
 
 ### Expected Output
 
 ```t
-🎤 Agent Notes C++ v1.0.0
+🎤 Agent Notes CLI v1.0.0
 Intelligent audio transcription with AI summarization
 ═══════════════════════════════════════════════════
 
-🤖 Loading Whisper model: ggml-base.en.bin
+🤖 Loading Whisper model: Models/ggml-base.en.bin
 ✅ Whisper model loaded successfully
-🧠 Loading LLM model: qwen2.5-0.5b-instruct-q4_0.gguf
+🧠 Loading LLM model: Models/qwen2.5-0.5b-instruct-q4_k_m.gguf
 ✅ LLM model loaded successfully
 🗄️  Initializing database...
 ✅ Database initialized
 🎙️  Initializing audio capture...
 ✅ Audio capture initialized
 
-🎤 Listening... (Press Ctrl+C to stop)
-═══════════════════════════════════
+Welcome to Agent Notes CLI!
+Type 'help' for available commands.
+
+> help
+Available commands:
+  transcribe    - Start real-time transcription
+  notes         - List all notes
+  new-note      - Create a new note
+  delete-note   - Delete a note by ID
+  chats         - List all chats
+  new-chat      - Start a new chat
+  delete-chat   - Delete a chat by ID
+  quit          - Exit the application
+
+> transcribe
+🎤 Listening... (Press 'q' + Enter to stop transcription)
 
 [14:30:15] I need to schedule a meeting with the team tomorrow
 [14:30:18] Let's discuss the project roadmap and deliverables
 [14:30:22] We should also review the budget allocation
 
-🧠 AI Summary: Meeting planning discussion covering team scheduling, project roadmap review, and budget considerations for tomorrow's session.
+🧠 Generating AI Summary...
+📝 AI Summary: Meeting planning discussion covering team scheduling, project roadmap review, and budget considerations for tomorrow's session.
 
 💾 Saved to database: Transcription ID 1
+
+> quit
+Goodbye! Thanks for using Agent Notes CLI.
 ```
 
 ## 📊 Performance
@@ -138,6 +161,8 @@ Intelligent audio transcription with AI summarization
 - **`AudioCapture`**: Real-time audio input with optimized 128-frame buffer
 - **`WhisperTranscriber`**: Speech-to-text via WhisperBridge API
 - **`LLMClient`**: Text summarization using LlamaBridge API
+- **`LlamaServer`**: Background llama.cpp server process management
+- **`AgentNotesCli`**: Command-line interface for interactive note-taking
 - **`DBHelper`**: SQLite database operations for persistence
 
 ### Recent Optimizations
@@ -150,24 +175,41 @@ Intelligent audio transcription with AI summarization
 ## 📁 Project Structure
 
 ```t
-agent-notes-cpp/
+agent-notes-backend/
 ├── 📁 include/                 # Header files
 │   ├── AudioCapture.h         # Audio input interface  
 │   ├── WhisperTranscriber.h   # Whisper wrapper
+│   ├── WhisperBridge.h        # Whisper C++ bridge
 │   ├── LLMClient.h            # LLM summarization
+│   ├── LlamaBridge.h          # Llama C++ bridge
+│   ├── LlamaServer.h          # Background server management
+│   ├── AgentNotesCli.h        # CLI interface
 │   ├── DBHelper.h             # Database operations
 │   └── AudioBuffer.h          # Ring buffer
 ├── 📁 src/                    # Implementation files
 │   ├── main.cpp              # Application entry point
+│   ├── AgentNotesCli.cpp     # CLI interface implementation
 │   ├── AudioCapture.cpp      # Audio capture implementation
 │   ├── WhisperTranscriber.cpp# Whisper integration
+│   ├── WhisperBridge.cpp     # Whisper C++ bridge
 │   ├── LLMClient.cpp         # LLM client implementation
+│   ├── LlamaBridge.cpp       # Llama C++ bridge
+│   ├── LlamaServer.cpp       # Background server management
 │   └── DBHelper.cpp          # Database helper
+├── 📁 Models/                 # AI model files
+│   ├── ggml-base.en.bin      # Whisper model (English)
+│   ├── ggml-tiny.en.bin      # Whisper model (Tiny)
+│   └── qwen2.5-0.5b-instruct-q4_k_m.gguf  # Qwen LLM model
 ├── 📁 third_party/           # Dependencies (git submodules)
 │   ├── whisper.cpp/          # Whisper C++ implementation
-│   └── llama.cpp/            # Llama C++ implementation
+│   ├── llama.cpp/            # Llama C++ implementation
+│   ├── rtaudio/              # RtAudio library
+│   └── websocketpp/          # WebSocket++ library
 ├── 📁 build/                 # Build artifacts
 ├── CMakeLists.txt            # Build configuration
+├── setup.sh                  # Setup script
+├── run.sh                    # Quick run script
+├── CLAUDE.md                 # Project instructions for Claude
 └── README.md                 # This file
 ```
 
@@ -177,21 +219,30 @@ agent-notes-cpp/
 
 ```bash
 # Debug build with symbols
-cmake .. -DCMAKE_BUILD_TYPE=Debug
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DUSE_PORTAUDIO=ON
 
 # Release build (optimized)
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_PORTAUDIO=ON
 
-# Static library builds (default)
-cmake .. -DUSE_STATIC_LIBS=ON
+# Use RtAudio instead of PortAudio
+cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_RTAUDIO=ON
+
+# Build with all optimizations
+cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_PORTAUDIO=ON
+make -j$(nproc)  # Linux
+make -j$(sysctl -n hw.ncpu)  # macOS
 ```
 
 ### Dependencies
 
 - **whisper.cpp**: Speech recognition (git submodule)
 - **llama.cpp**: LLM inference (git submodule)  
+- **rtaudio**: Cross-platform audio I/O (git submodule, optional)
+- **websocketpp**: WebSocket library (git submodule)
 - **SQLite**: Database persistence (system library)
-- **RtAudio/PortAudio**: Cross-platform audio I/O
+- **PortAudio**: Cross-platform audio I/O (system library, optional)
+- **nlohmann/json**: JSON parsing (system library)
+- **CURL**: HTTP client (system library)
 
 ## 🗄️ Database Schema
 
@@ -206,13 +257,13 @@ The application automatically creates SQLite tables for:
 ### Recommended Models
 
 ```bash
-# Whisper models (speech-to-text)
-curl -L -O https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin    # Recommended
-curl -L -O https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin   # Higher quality
+# Whisper models (speech-to-text) - Download to Models/ directory
+curl -L -o Models/ggml-base.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin    # Recommended
+curl -L -o Models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin   # Higher quality
 
-# Qwen models (text summarization) 
-curl -L -O https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf  # Current
-curl -L -O https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_0.gguf  # More capable
+# Qwen models (text summarization) - Download to Models/ directory
+curl -L -o Models/qwen2.5-0.5b-instruct-q4_k_m.gguf https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf  # Current
+curl -L -o Models/qwen2.5-1.5b-instruct-q4_0.gguf https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_0.gguf  # More capable
 ```
 
 ## 🔧 Configuration
@@ -232,13 +283,13 @@ audioConfig.deviceId = 0;          // 0 = default device
 ```cpp
 // Whisper configuration
 WhisperTranscriber::Config whisperConfig;
-whisperConfig.modelPath = "ggml-base.en.bin";
+whisperConfig.modelPath = "Models/ggml-base.en.bin";
 whisperConfig.language = "auto";   // Auto-detect
 whisperConfig.threads = 4;         // CPU cores
 
 // LLM configuration  
 LLMClient::Config llmConfig;
-llmConfig.modelPath = "qwen2.5-0.5b-instruct-q4_0.gguf";
+llmConfig.modelPath = "Models/qwen2.5-0.5b-instruct-q4_k_m.gguf";
 llmConfig.maxTokens = 512;         // Summary length
 llmConfig.temperature = 0.3;       // Conservative generation
 ```
@@ -250,11 +301,11 @@ llmConfig.temperature = 0.3;       // Conservative generation
 #### "Failed to load LLM model"
 
 ```bash
-# Verify model file exists and is valid
-ls -la *.gguf
+# Verify model files exist and are valid
+ls -la Models/*.gguf Models/*.bin
 
 # Check model compatibility
-./build/agent-notes --test-llm qwen2.5-0.5b-instruct-q4_0.gguf
+./build/audio-transcriber --test-llm Models/qwen2.5-0.5b-instruct-q4_k_m.gguf
 ```
 
 ### "Database initialization failed"
@@ -271,7 +322,7 @@ sqlite3 --version
 
 ```bash
 # Use smaller models
-./build/agent-notes ggml-tiny.en.bin qwen2.5-0.5b-instruct-q4_0.gguf
+./build/audio-transcriber Models/ggml-tiny.en.bin Models/qwen2.5-0.5b-instruct-q4_k_m.gguf
 
 # Reduce model context size in config
 ```
