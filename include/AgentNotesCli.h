@@ -49,7 +49,10 @@ private:
 
   // Transcription methods
   void startTranscription();
-  void summarizeTranscript(std::string finalTranscription);
+  void summarizeTranscript(int transcriptId, std::string finalTranscription);
+  void listTranscriptions();
+  void deleteTranscription(int id);
+  void viewTranscription(int id);
 
   // Chat methods
   void newChat();

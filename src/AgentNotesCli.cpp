@@ -1,5 +1,7 @@
+#include <functional>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
 
 #include "AgentNotesCli.h"
 #include "AudioCapture.h"
@@ -121,6 +123,10 @@ void AgentNotesCli::printHelp() {
   std::cout << "Available commands:" << std::endl;
   std::cout << "  help               Show this help message" << std::endl;
   std::cout << "  start              Start transcription" << std::endl;
+  std::cout << "  listtranscriptions List all transcriptions" << std::endl;
+  std::cout << "  gettranscription <id> View transcription by ID" << std::endl;
+  std::cout << "  deletetranscription <id> Delete transcription by ID"
+            << std::endl;
   std::cout << "  newchat            Start a new chat" << std::endl;
   std::cout << "  listchats          List all chats" << std::endl;
   std::cout << "  deletechat <id>    Delete chat by ID" << std::endl;
@@ -175,42 +181,66 @@ void AgentNotesCli::processUserInput(const std::string &input) {
   std::string command;
   iss >> command;
 
-  if (command == "help") {
-    printHelp();
-  } else if (command == "start") {
-    startTranscription();
-  } else if (command == "newchat") {
-    newChat();
-  } else if (command == "listchats") {
-    listChats();
-  } else if (command == "deletechat") {
-    int id;
-    if (iss >> id) {
-      deleteChat(id);
-    } else {
-      std::cout << "Invalid command format. Usage: deletechat <id>"
-                << std::endl;
-    }
-  } else if (command == "create") {
-    std::string content;
-    std::getline(iss, content);
-    if (!content.empty()) {
-      createNote(content.substr(1)); // Remove leading space
-    } else {
-      std::cout << "Note content cannot be empty." << std::endl;
-    }
-  } else if (command == "listnotes") {
-    listNotes();
-  } else if (command == "deletenote") {
-    int id;
-    if (iss >> id) {
-      deleteNote(id);
-    } else {
-      std::cout << "Invalid command format. Usage: deletenote <id>"
-                << std::endl;
-    }
-  } else if (command == "exit") {
-    running = false;
+  using Handler = std::function<void(std::istringstream &)>;
+
+  // Helper wrappers that produce typed handlers from member functions
+  auto wrapNoArg = [](auto fn) {
+    return Handler([fn](std::istringstream &) { fn(); });
+  };
+
+  auto wrapIntArg = [](auto fn) {
+    return Handler([fn](std::istringstream &s) {
+      int id;
+      if (s >> id) {
+        fn(id);
+      } else {
+        std::cout << "Invalid command format. Expected integer argument."
+                  << std::endl;
+      }
+    });
+  };
+
+  auto wrapStringArg = [](auto fn, const std::string &emptyMsg =
+                                       "Argument cannot be empty.") {
+    return Handler([fn, emptyMsg](std::istringstream &s) {
+      std::string rest;
+      std::getline(s, rest);
+      if (!rest.empty() && rest.front() == ' ') {
+        rest.erase(0, 1);
+      }
+      if (!rest.empty()) {
+        fn(rest);
+      } else {
+        std::cout << emptyMsg << std::endl;
+      }
+    });
+  };
+
+  std::unordered_map<std::string, Handler> dispatch{
+      {"help", wrapNoArg([this] { printHelp(); })},
+      {"start", wrapNoArg([this] { startTranscription(); })},
+      {"listtranscriptions", wrapNoArg([this] { listTranscriptions(); })},
+      {"gettranscription",
+       wrapIntArg([this](int id) { viewTranscription(id); })},
+      {"deletetranscription",
+       wrapIntArg([this](int id) { deleteTranscription(id); })},
+      {"newchat", wrapNoArg([this] { newChat(); })},
+      {"listchats", wrapNoArg([this] { listChats(); })},
+      {"deletechat", wrapIntArg([this](int id) { deleteChat(id); })},
+      {"create", wrapStringArg([this](const std::string &c) { createNote(c); },
+                               "Note content cannot be empty.")},
+      {"listnotes", wrapNoArg([this] { listNotes(); })},
+      {"deletenote", wrapIntArg([this](int id) { deleteNote(id); })},
+      {"exit", wrapNoArg([this] { running = false; })},
+  };
+
+  if (command.empty()) {
+    return;
+  }
+
+  auto it = dispatch.find(command);
+  if (it != dispatch.end()) {
+    it->second(iss);
   } else {
     std::cout << "Unknown command: " << command
               << ". Type 'help' to see available commands." << std::endl;
@@ -271,6 +301,8 @@ void AgentNotesCli::startTranscription() {
 
     // Cleanup
     std::cout << std::endl << "🛑 Stopping..." << std::endl;
+    // Reset g_shouldStop for the next run
+    g_shouldStop = 0;
 
     capture->stop();
     whisperTranscriber->stopRealTimeProcessing();
@@ -286,9 +318,17 @@ void AgentNotesCli::startTranscription() {
     std::cout
         << "Do you want to save the transcription to the database? (y/n): ";
     std::cin >> choice;
+    int transcriptId = 0;
 
     if (choice == "y" || choice == "Y") {
-      if (!dbHelper->SaveTranscriptionResult(finalTranscription)) {
+      std::string transcriptTitle;
+      std::cout << "Enter a title for the transcription: ";
+      std::cin.ignore();
+      std::getline(std::cin, transcriptTitle);
+
+      transcriptId = dbHelper->SaveTranscriptionResult(transcriptTitle,
+                                                       finalTranscription);
+      if (transcriptId == -1) {
         std::cerr << "❌ Failed to save transcription to database" << std::endl;
       } else {
         std::cout << "✅ Transcription saved to database successfully"
@@ -297,7 +337,7 @@ void AgentNotesCli::startTranscription() {
     }
 
     // Summarize the transcription
-    summarizeTranscript(finalTranscription);
+    summarizeTranscript(transcriptId, finalTranscription);
 
     std::cout << "✅ Shutdown complete" << std::endl;
   } catch (const std::exception &e) {
@@ -311,7 +351,8 @@ void AgentNotesCli::startTranscription() {
   return;
 }
 
-void AgentNotesCli::summarizeTranscript(std::string finalTranscription) {
+void AgentNotesCli::summarizeTranscript(int transcriptId,
+                                        std::string finalTranscription) {
   // Initialize LLM client
   std::cout << "🤖 Initializing LLM for summarization..." << std::endl;
 
@@ -328,13 +369,66 @@ void AgentNotesCli::summarizeTranscript(std::string finalTranscription) {
                 << " tokens in " << summaryResponse.inferenceTimeMs << "ms"
                 << std::endl;
 
-      // TODO: Save summary to database
+      // Save summary to database
+
+      if (dbHelper->SaveSummary(transcriptId, summaryResponse.text,
+                                summaryResponse.tokensGenerated,
+                                summaryResponse.inferenceTimeMs)) {
+        std::cout << "✅ Summary saved to database successfully" << std::endl;
+      } else {
+        std::cerr << "❌ Failed to save summary to database" << std::endl;
+      }
+
     } else {
       std::cerr << "❌ Failed to generate summary: " << summaryResponse.error
                 << std::endl;
     }
   } else {
     std::cerr << "❌ Failed to initialize LLM client" << std::endl;
+  }
+}
+
+void AgentNotesCli::listTranscriptions() {
+  std::cout << "Listing all transcriptions..." << std::endl;
+  // Placeholder for listing all transcriptions logic
+
+  auto transcriptionTitles = dbHelper->GetAllTranscriptions();
+  for (const auto &transcription : transcriptionTitles) {
+    std::cout << " - [" << transcription.first << "] " << transcription.second
+              << std::endl;
+  }
+}
+
+void AgentNotesCli::deleteTranscription(int id) {
+  std::cout << "Deleting transcription with ID " << id
+            << "... (not implemented)" << std::endl;
+
+  if (dbHelper->DeleteTranscriptionById(id)) {
+    std::cout << "✅ Transcription deleted successfully" << std::endl;
+  } else {
+    std::cerr << "❌ Failed to delete transcription" << std::endl;
+  }
+}
+
+void AgentNotesCli::viewTranscription(int id) {
+  std::cout << "Viewing transcription with ID " << id << std::endl;
+
+  std::string transcription = dbHelper->GetTranscriptionById(id);
+  if (!transcription.empty()) {
+    std::cout << "📝 Transcription:" << std::endl;
+    std::cout << "═══════════" << std::endl;
+    std::cout << transcription << std::endl;
+
+    std::string summary = dbHelper->GetSummaryByTranscriptionId(id);
+    if (!summary.empty()) {
+      std::cout << "📝 Summary:" << std::endl;
+      std::cout << "═══════════" << std::endl;
+      std::cout << summary << std::endl;
+    } else {
+      std::cerr << "❌ Failed to retrieve summary" << std::endl;
+    }
+  } else {
+    std::cerr << "❌ Failed to retrieve transcription" << std::endl;
   }
 }
 
