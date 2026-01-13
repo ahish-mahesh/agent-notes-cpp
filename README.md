@@ -143,8 +143,8 @@ Goodbye! Thanks for using Agent Notes CLI.
 
 | Component | Model | Size | Speed | Quality |
 |-----------|-------|------|-------|---------|
-| **Transcription** | Whisper base.en | 142MB | 16x realtime | Good ⭐ |
-| **Summarization** | Qwen 2.5 0.5B | ~300MB | ~2-3s | Efficient ⭐ |
+| **Transcription** | Whisper base.en | 142MB | 16x realtime | Good |
+| **Summarization** | Qwen 2.5 0.5B | ~300MB | ~2-3s | Efficient |
 
 ### System Requirements
 
