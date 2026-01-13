@@ -1,21 +1,21 @@
-# 🎤 Agent Notes C++
+# Agent Notes C++
 
 An intelligent, real-time audio transcription and note-taking application with AI-powered summarization written in C++ using OpenAI's Whisper and Llama models.
 
-## ✨ Features
+## Features
 
-- **🚀 Real-time Transcription**: Live speech-to-text with low latency using Whisper
-- **🤖 AI Summarization**: Intelligent text summarization using Llama models (Qwen 2.5 0.5B)
-- **💾 Database Persistence**: SQLite integration for storing transcriptions and summaries
-- **🎯 High Performance**: Native C++ implementation with optimized audio processing
-- **🔧 Cross-platform**: Supports macOS, Linux, and Windows
-- **🎚️ Multiple Audio APIs**: RtAudio and PortAudio support
-- **🌍 Multi-language**: Supports 99+ languages via Whisper
-- **⚙️ Configurable**: Adjustable device selection, threading, and quality settings
-- **📱 Device Management**: List and select audio input devices
-- **🛡️ Robust**: Comprehensive error handling and graceful shutdown
+- ** Real-time Transcription**: Live speech-to-text with low latency using Whisper
+- **AI Summarization**: Intelligent text summarization using Llama models (Qwen 2.5 0.5B)
+- **Database Persistence**: SQLite integration for storing transcriptions and summaries
+- **High Performance**: Native C++ implementation with optimized audio processing
+- **Cross-platform**: Supports macOS, Linux, and Windows
+- **Multiple Audio APIs**: RtAudio and PortAudio support
+- **Multi-language**: Supports 99+ languages via Whisper
+- **Configurable**: Adjustable device selection, threading, and quality settings
+- **Device Management**: List and select audio input devices
+- **Robust**: Comprehensive error handling and graceful shutdown
 
-## 🏗️ Architecture
+## Architecture
 
 ```t
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐
@@ -48,7 +48,7 @@ An intelligent, real-time audio transcription and note-taking application with A
                         └──────────────────┘    └─────────────────────┘
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -73,7 +73,7 @@ cd agent-notes-backend
 # make -j$(sysctl -n hw.ncpu)  # macOS
 ```
 
-## 🎮 Usage
+## Usage
 
 ### Basic Usage
 
@@ -94,18 +94,18 @@ cd agent-notes-backend
 ### Expected Output
 
 ```t
-🎤 Agent Notes CLI v1.0.0
+Agent Notes CLI v1.0.0
 Intelligent audio transcription with AI summarization
 ═══════════════════════════════════════════════════
 
-🤖 Loading Whisper model: Models/ggml-base.en.bin
-✅ Whisper model loaded successfully
-🧠 Loading LLM model: Models/qwen2.5-0.5b-instruct-q4_k_m.gguf
-✅ LLM model loaded successfully
-🗄️  Initializing database...
-✅ Database initialized
-🎙️  Initializing audio capture...
-✅ Audio capture initialized
+Loading Whisper model: Models/ggml-base.en.bin
+Whisper model loaded successfully
+Loading LLM model: Models/qwen2.5-0.5b-instruct-q4_k_m.gguf
+LLM model loaded successfully
+Initializing database...
+Database initialized
+Initializing audio capture...
+Audio capture initialized
 
 Welcome to Agent Notes CLI!
 Type 'help' for available commands.
@@ -122,22 +122,22 @@ Available commands:
   quit          - Exit the application
 
 > transcribe
-🎤 Listening... (Press 'q' + Enter to stop transcription)
+Listening... (Press 'q' + Enter to stop transcription)
 
 [14:30:15] I need to schedule a meeting with the team tomorrow
 [14:30:18] Let's discuss the project roadmap and deliverables
 [14:30:22] We should also review the budget allocation
 
-🧠 Generating AI Summary...
-📝 AI Summary: Meeting planning discussion covering team scheduling, project roadmap review, and budget considerations for tomorrow's session.
+Generating AI Summary...
+AI Summary: Meeting planning discussion covering team scheduling, project roadmap review, and budget considerations for tomorrow's session.
 
-💾 Saved to database: Transcription ID 1
+Saved to database: Transcription ID 1
 
 > quit
 Goodbye! Thanks for using Agent Notes CLI.
 ```
 
-## 📊 Performance
+## Performance
 
 ### Model Performance (MacBook Air M2)
 
@@ -154,7 +154,7 @@ Goodbye! Thanks for using Agent Notes CLI.
 - **Storage**: 1GB+ for models and database
 - **OS**: macOS 10.15+, Linux (Ubuntu 18.04+), Windows 10+
 
-## 🔧 Components
+## Components
 
 ### Core Classes
 
@@ -172,11 +172,11 @@ Goodbye! Thanks for using Agent Notes CLI.
 - **Build System**: Static linking of whisper.cpp and llama.cpp libraries
 - **Prompt Engineering**: Enhanced summarization prompts for better results
 
-## 📁 Project Structure
+## Project Structure
 
 ```t
 agent-notes-backend/
-├── 📁 include/                 # Header files
+├── include/                 # Header files
 │   ├── AudioCapture.h         # Audio input interface  
 │   ├── WhisperTranscriber.h   # Whisper wrapper
 │   ├── WhisperBridge.h        # Whisper C++ bridge
@@ -186,7 +186,7 @@ agent-notes-backend/
 │   ├── AgentNotesCli.h        # CLI interface
 │   ├── DBHelper.h             # Database operations
 │   └── AudioBuffer.h          # Ring buffer
-├── 📁 src/                    # Implementation files
+├── src/                    # Implementation files
 │   ├── main.cpp              # Application entry point
 │   ├── AgentNotesCli.cpp     # CLI interface implementation
 │   ├── AudioCapture.cpp      # Audio capture implementation
@@ -196,16 +196,16 @@ agent-notes-backend/
 │   ├── LlamaBridge.cpp       # Llama C++ bridge
 │   ├── LlamaServer.cpp       # Background server management
 │   └── DBHelper.cpp          # Database helper
-├── 📁 Models/                 # AI model files
+├── Models/                 # AI model files
 │   ├── ggml-base.en.bin      # Whisper model (English)
 │   ├── ggml-tiny.en.bin      # Whisper model (Tiny)
 │   └── qwen2.5-0.5b-instruct-q4_k_m.gguf  # Qwen LLM model
-├── 📁 third_party/           # Dependencies (git submodules)
+├── third_party/           # Dependencies (git submodules)
 │   ├── whisper.cpp/          # Whisper C++ implementation
 │   ├── llama.cpp/            # Llama C++ implementation
 │   ├── rtaudio/              # RtAudio library
 │   └── websocketpp/          # WebSocket++ library
-├── 📁 build/                 # Build artifacts
+├── build/                 # Build artifacts
 ├── CMakeLists.txt            # Build configuration
 ├── setup.sh                  # Setup script
 ├── run.sh                    # Quick run script
@@ -213,7 +213,7 @@ agent-notes-backend/
 └── README.md                 # This file
 ```
 
-## 🛠️ Build Configuration
+## Build Configuration
 
 ### CMake Options
 
@@ -244,7 +244,7 @@ make -j$(sysctl -n hw.ncpu)  # macOS
 - **nlohmann/json**: JSON parsing (system library)
 - **CURL**: HTTP client (system library)
 
-## 🗄️ Database Schema
+## Database Schema
 
 The application automatically creates SQLite tables for:
 
@@ -252,7 +252,7 @@ The application automatically creates SQLite tables for:
 - **Summaries**: AI-generated summaries linked to transcriptions
 - **Sessions**: Audio capture session metadata
 
-## 🎯 Models
+## Models
 
 ### Recommended Models
 
@@ -266,7 +266,7 @@ curl -L -o Models/qwen2.5-0.5b-instruct-q4_k_m.gguf https://huggingface.co/Qwen/
 curl -L -o Models/qwen2.5-1.5b-instruct-q4_0.gguf https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_0.gguf  # More capable
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Audio Settings
 
@@ -294,7 +294,7 @@ llmConfig.maxTokens = 512;         // Summary length
 llmConfig.temperature = 0.3;       // Conservative generation
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -327,7 +327,7 @@ sqlite3 --version
 # Reduce model context size in config
 ```
 
-## 🚀 Recent Updates
+## Recent Updates
 
 ### Version History
 
@@ -338,7 +338,7 @@ sqlite3 --version
 - **v0.6**: WhisperBridge and LlamaBridge API integration
 - **v0.5**: Initial LLM client implementation
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature-name`
@@ -346,23 +346,23 @@ sqlite3 --version
 4. Commit with clear messages: `git commit -m "Add feature X"`
 5. Push and create a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **[OpenAI](https://openai.com)** - For the Whisper model
 - **[Alibaba Cloud](https://qwenlm.github.io/)** - For the Qwen language models
 - **[ggerganov](https://github.com/ggerganov)** - For whisper.cpp and llama.cpp implementations
 - **[thestk](https://github.com/thestk)** - For RtAudio library
 
-## 📞 Support
+## Support
 
-- 🐛 **Bug Reports**: [GitHub Issues](../../issues)
-- 💬 **Discussions**: [GitHub Discussions](../../discussions)  
-- 📖 **Documentation**: [Wiki](../../wiki)
+- **Bug Reports**: [GitHub Issues](../../issues)
+- **Discussions**: [GitHub Discussions](../../discussions)  
+- **Documentation**: [Wiki](../../wiki)
 
 ---
 
-**Made with ❤️ and C++** | **Intelligent transcription and summarization for everyone** 🎤🧠✨
+**Made with C++** | **Intelligent transcription and summarization for everyone**
